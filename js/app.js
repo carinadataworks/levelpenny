@@ -576,7 +576,7 @@
   // ---------- templates ----------
   function renderTemplates() {
     $('#tplGrid').innerHTML = T.map(function (t) {
-      var r = C.calculate(t.job);
+      var r = C.calculate(templateJob(t.id)); // with your profile labor burden, same as when loaded
       return '<article class="card tpl"><div class="tpl-top"><span class="tpl-icon" aria-hidden="true">' + t.icon + '</span><span class="tpl-trade">' + esc(t.trade) + '</span></div>' +
         '<h2>' + esc(t.job.name) + '</h2><p>' + esc(t.blurb) + '</p>' +
         '<dl class="tpl-stats"><div><dt>Price</dt><dd>' + money(r.priceCents) + '</dd></div><div><dt>Net profit</dt><dd>' + money(r.netProfitCents) + '</dd></div><div><dt>Profit / hr</dt><dd>' + (r.profitPerHourCents === null ? '—' : money(r.profitPerHourCents)) + '</dd></div></dl>' +

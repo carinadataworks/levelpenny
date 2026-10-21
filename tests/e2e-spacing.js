@@ -40,7 +40,7 @@ const all = []; let states = 0;
         if (!noShot) await p.screenshot({ path: path.join(OUT, `${tag}-${state}.png`), fullPage: !phone && state !== 'tour-1' && !state.startsWith('tour') });
       };
       const view = async v => { await p.evaluate(v2 => { location.hash = v2; }, v); await p.waitForSelector(`section[data-view="${v}"]:not([hidden])`); await p.evaluate(() => window.scrollTo(0, 0)); };
-      const waitToast = () => p.waitForFunction(() => document.getElementById('toast').hidden, null, { timeout: 8000 }).catch(() => {});
+      const waitToast = () => p.evaluate(() => { document.getElementById('toast').hidden = true; }); // toast was checked in its own state
       try {
         await p.goto(BASE);
         await p.waitForSelector('#tour:not([hidden])');

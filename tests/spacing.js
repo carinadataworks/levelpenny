@@ -31,6 +31,7 @@ function inPage(arg) {
   const sx = window.scrollX, sy = window.scrollY;
   const shown = e => {
     if (e.closest('[hidden], .visually-hidden')) return false;
+    if (e.closest('details:not([open]) > :not(summary)')) return false; // collapsed content
     if (e.parentElement && e.parentElement.closest('.seg') ) return false;  // segments inside one control
     for (let n = e; n && n !== document.documentElement; n = n.parentElement) {
       const cs = getComputedStyle(n);
@@ -40,7 +41,8 @@ function inPage(arg) {
     return r.width > 2 && r.height > 2;
   };
   // fixed layers, plus the sticky top bar / phone results bar, float over the page by design
-  const layer = e => { for (let n = e; n; n = n.parentElement) { const p = getComputedStyle(n).position; if (p === 'fixed' || (p === 'sticky' && n.matches('.topbar, .mobilebar'))) return 'fixed'; } return 'flow'; };
+  const layer = e => { for (let n = e; n; n = n.parentElement) { const p = getComputedStyle(n).position; if (p === 'fixed' || (p === 'sticky' && n.matches('.topbar, .mobilebar'))) return 'fixed';
+    if (n.matches && n.matches('.menu-list')) return 'popover'; } return 'flow'; };
   const name = e => {
     let s = e.tagName.toLowerCase();
     if (e.id) s += '#' + e.id;

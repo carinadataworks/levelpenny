@@ -636,3 +636,32 @@ details.burden .burden-note { margin-top: 0; }
 .burden-grid .field label .opt, .profile-form .field label .opt { white-space: nowrap; }
 .burden-foot { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 12px; margin: 4px 0 8px; }
 .burden-foot .hint { margin: 0; }
+
+/* =====================================================================
+   Spacing scale (tests/spacing.js enforces it): boxes never sit closer than
+   --sp-3 (12px); small inline buttons never closer than --sp-2 (8px).
+   ===================================================================== */
+:root { --sp-1: 4px; --sp-2: 8px; --sp-3: 12px; --sp-4: 16px; --sp-5: 24px; }
+.modebar { gap: var(--sp-3); }
+.hero { margin-bottom: var(--sp-3); }
+.kpi-hero { gap: var(--sp-3); margin-bottom: var(--sp-3); }
+.value-msg { margin-bottom: var(--sp-3) !important; }
+.kpis { gap: var(--sp-3) !important; }
+.lines { gap: var(--sp-3); margin-bottom: var(--sp-3); }
+details.math { margin-top: var(--sp-3); }
+.disclaimer { margin-top: var(--sp-3); }
+.tour-agree { margin-bottom: var(--sp-3); }
+.tour-actions { gap: var(--sp-2); }
+.compare td.actions { gap: var(--sp-2); }
+@media (min-width: 980px) {
+  .compare td.actions .btn { margin-left: var(--sp-2); }
+  .compare td.actions .btn:first-child { margin-left: 0; }
+}
+.docs-list { gap: var(--sp-3) !important; }
+.js-kpis { gap: var(--sp-3); }
+@media (min-width: 1200px) {
+  section[data-view="calculator"] > .hero { margin-bottom: var(--sp-3); }
+}
+.tpl-stats { gap: var(--sp-3); }
+.downloads h2 { margin-bottom: var(--sp-3); }
+@container paper (max-width: 600px) { .doc-bottom { gap: var(--sp-3); } }
