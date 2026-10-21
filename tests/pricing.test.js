@@ -81,6 +81,16 @@ test('signup goes to LevelPenny\'s own FormSubmit inbox (never another product\'
   for (const f of ['terms.html', 'privacy.html', 'guide.html']) assert.ok(read(f).includes('levelpennyapp@gmail.com'), f + ' shows the contact email');
 });
 
+test('SIGNUP_SCRIPT_URL (Google Apps Script) is present and empty for now; script body = plain fields + form + empty honeypot', () => {
+  assert.ok(Object.prototype.hasOwnProperty.call(CFG, 'SIGNUP_SCRIPT_URL'));
+  assert.strictEqual(CFG.SIGNUP_SCRIPT_URL, '', 'empty = FormSubmit (SIGNUP_ENDPOINT) stays in use');
+  assert.strictEqual(P.hasEndpoint('https://script.google.com/macros/s/X/exec'), true);
+  const r = P.signupPayload({ email: 'a@b.co', plan: 'pro-yearly', note: 'hi' }, 'LevelPenny');
+  assert.deepStrictEqual(P.scriptBody(r.payload), { form: 'signup', email: 'a@b.co', Plan: 'Pro yearly', Price: '$79/yr', Offer: '40% off for life (founding member)', App: 'LevelPenny', Note: 'hi', website: '' });
+  assert.strictEqual(new URLSearchParams(P.scriptBody(r.payload)).toString(),
+    'form=signup&email=a%40b.co&Plan=Pro+yearly&Price=%2479%2Fyr&Offer=40%25+off+for+life+%28founding+member%29&App=LevelPenny&Note=hi&website=');
+});
+
 test('old placeholder wording is gone', () => {
   for (const f of ['index.html', 'terms.html', 'privacy.html', 'guide.html', 'README.md', 'js/app.js']) {
     const t = read(f);

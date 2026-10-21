@@ -116,6 +116,16 @@ public site emails levelpennyapp@gmail.com a confirmation link that must be clic
 Set the value to `''` to close signups: the form then shows *"Signups open soon"* and sends/stores nothing.
 Contact email (terms, privacy, field guide): `APP_CONFIG.contactEmail` = levelpennyapp@gmail.com.
 
+**Google Apps Script instead of FormSubmit (`APP_CONFIG.SIGNUP_SCRIPT_URL`, empty for now).** Gmail flags FormSubmit
+mail as spam, so the replacement is an Apps Script web app deployed from levelpennyapp@gmail.com (script and deploy
+steps: `signup-backend/Code.gs` and `README.md`, kept outside this repo, with `APP_NAME = 'LevelPenny'`). Paste its `/exec` URL into
+`js/config.js` → `SIGNUP_SCRIPT_URL`; it then wins over `SIGNUP_ENDPOINT`. The form POSTs with `mode: 'no-cors'` and a
+form-encoded body (`URLSearchParams`): `form=signup`, `email`, `Plan`, `Price`, `Offer`, `App`, `Note` (if typed) and an
+empty `website` honeypot. The script appends a row to the "LevelPenny signups" Sheet and emails the inbox from itself.
+The response is opaque, so a completed request counts as sent and a network error shows the error and keeps the input.
+`tests/e2e-script-signup.js` checks this path against a local mock. When you switch, update the FormSubmit wording in
+`privacy.html` and `terms.html`.
+
 **Tests never touch the network.** `tests/netguard.js` aborts every browser request that isn't the local test
 server and answers `formsubmit.co` locally (logged, asserted); any attempted internet request fails the run.
 
@@ -154,7 +164,7 @@ Owner time is deliberately *not* a cost: the owner's pay is the profit, which is
 ```bash
 npm install          # dev deps: playwright-core, axe-core
 npm test             # unit tests (node:test): calc.test.js (every calculation hand-checked) + pricing.test.js (price set guard)
-npm run test:e2e     # tests/e2e.js (Chromium flow) + tests/e2e-wide.js (wide screens + Safari) + tests/e2e-spacing.js
+npm run test:e2e     # tests/e2e.js (Chromium flow) + tests/e2e-wide.js (wide screens + Safari) + tests/e2e-spacing.js + tests/e2e-script-signup.js
 ```
 
 The e2e tests need a Chromium and a WebKit that match `playwright-core` (`npx playwright-core install chromium webkit`,
@@ -207,7 +217,7 @@ terms.html, privacy.html
 css/styles.css        app styles (navy + gold, mobile first)
 css/print.css         Letter print stylesheet
 css/page.css          guide / legal page styles
-js/config.js          product name & settings  ← rename here; SIGNUP_ENDPOINT (empty)
+js/config.js          product name & settings  ← rename here; SIGNUP_ENDPOINT, SIGNUP_SCRIPT_URL
 js/plans.js           plans, prices, Free limit, founding offer ← the ONE price source
 js/calc.js            calculation engine (pure, cents)
 js/docs.js            estimates, invoices, job sheet rendering (pure)

@@ -157,12 +157,20 @@
   /** FormSubmit answers 200 with {success:"false"} on some errors; treat that as a failure. */
   function formSubmitOk(status, data) { return status >= 200 && status < 300 && !(data && String(data.success) === 'false'); }
 
+  /** Google Apps Script body (SIGNUP_SCRIPT_URL): the same fields without FormSubmit's _options, plus form and an empty honeypot. */
+  function scriptBody(payload) {
+    var fs = formSubmitBody(payload), body = { form: 'signup' };
+    Object.keys(fs).forEach(function (k) { if (k.charAt(0) !== '_') body[k] = fs[k]; });
+    body.website = '';
+    return body;
+  }
+
   return {
     FREE_SAVED_JOBS: FREE_SAVED_JOBS, FOUNDING: FOUNDING, STATUS: STATUS, TESTING_NOTE: TESTING_NOTE, PLANS: PLANS, NOT_BUILT: NOT_BUILT,
     PLAN_OPTIONS: PLAN_OPTIONS, NOTE_MAX: NOTE_MAX,
     plan: plan, option: option, fmt: fmt, priceText: priceText, priceCents: priceCents, yearlySavingsCents: yearlySavingsCents,
     foundingButtonText: foundingButtonText, priceFor: priceFor, textFor: textFor,
     canSaveNew: canSaveNew, usageText: usageText, hasEndpoint: hasEndpoint, signupPayload: signupPayload,
-    formSubmitBody: formSubmitBody, formSubmitOk: formSubmitOk
+    formSubmitBody: formSubmitBody, formSubmitOk: formSubmitOk, scriptBody: scriptBody
   };
 });

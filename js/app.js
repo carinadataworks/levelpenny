@@ -654,9 +654,10 @@
     $('#notBuiltList').innerHTML = P.NOT_BUILT.map(function (f) { return '<li>' + esc(f) + '</li>'; }).join('');
     $('#suPlan').innerHTML = P.PLAN_OPTIONS.map(function (o) { return '<option value="' + o.key + '">' + esc(o.short) + '</option>'; }).join('');
     $('#suPlan').value = 'pro-monthly';
-    var open = P.hasEndpoint(CFG.SIGNUP_ENDPOINT);
+    var viaScript = P.hasEndpoint(CFG.SIGNUP_SCRIPT_URL);
+    var open = viaScript || P.hasEndpoint(CFG.SIGNUP_ENDPOINT);
     $('#signupIdle').textContent = open
-      ? 'Sent by FormSubmit to ' + CFG.contactEmail + '. We\u2019ll use your email only to contact you about the founding offer. Joining doesn\u2019t start a subscription or a charge.'
+      ? (viaScript ? 'Sent to ' : 'Sent by FormSubmit to ') + CFG.contactEmail + '. We\u2019ll use your email only to contact you about the founding offer. Joining doesn\u2019t start a subscription or a charge.'
       : 'Signups open soon. This form doesn\u2019t send or save anything yet.';
     $('#signupSubmit').textContent = open ? 'Join the list' : 'Join the list (opens soon)';
   }
@@ -673,16 +674,21 @@
     var res = P.signupPayload({ email: $('#suEmail').value, plan: $('#suPlan').value, note: $('#suNote').value }, CFG.name);
     signupErr('Email', res.errors.email); signupErr('Plan', res.errors.plan); signupErr('Note', res.errors.note);
     if (!res.ok) { signupMsg('', ''); (res.errors.email ? $('#suEmail') : res.errors.plan ? $('#suPlan') : $('#suNote')).focus(); return; }
-    if (!P.hasEndpoint(CFG.SIGNUP_ENDPOINT)) {
+    var viaScript = P.hasEndpoint(CFG.SIGNUP_SCRIPT_URL);
+    if (!viaScript && !P.hasEndpoint(CFG.SIGNUP_ENDPOINT)) {
       signupMsg('Thanks! Signups open soon. Nothing was sent or saved, so please check back shortly.', 'soon');
       return;
     }
     var btn = $('#signupSubmit'); btn.disabled = true; signupMsg('Sending\u2026', '');
-    fetch(String(CFG.SIGNUP_ENDPOINT).trim(), { method: 'POST', body: JSON.stringify(P.formSubmitBody(res.payload)),
-      headers: { 'Content-Type': 'application/json', Accept: 'application/json' }, credentials: 'omit' })
-      .then(function (r) { return r.json().catch(function () { return {}; }).then(function (data) { return { r: r, data: data }; }); })
-      .then(function (x) {
-        if (!P.formSubmitOk(x.r.status, x.data)) throw new Error('HTTP ' + x.r.status);
+    var sent = viaScript
+      // Apps Script: no-cors gives an opaque response, so a resolved fetch counts as sent; a network error rejects.
+      ? fetch(String(CFG.SIGNUP_SCRIPT_URL).trim(), { method: 'POST', mode: 'no-cors', body: new URLSearchParams(P.scriptBody(res.payload)) })
+      : fetch(String(CFG.SIGNUP_ENDPOINT).trim(), { method: 'POST', body: JSON.stringify(P.formSubmitBody(res.payload)),
+        headers: { 'Content-Type': 'application/json', Accept: 'application/json' }, credentials: 'omit' })
+        .then(function (r) { return r.json().catch(function () { return {}; }).then(function (data) { return { r: r, data: data }; }); })
+        .then(function (x) { if (!P.formSubmitOk(x.r.status, x.data)) throw new Error('HTTP ' + x.r.status); });
+    sent
+      .then(function () {
         signupMsg('You\u2019re on the founding list for ' + res.payload.plan + ' (' + res.payload.price + '). Nothing is billed; we\u2019ll email you before anything is.', 'ok');
         $('#suEmail').value = ''; $('#suNote').value = '';
       })
