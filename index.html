@@ -1,0 +1,475 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Job Profit Calculator — by Carina Dataworks</title>
+<meta name="description" content="Job and quote profit calculator for contractors, freelancers and small service businesses. See your real profit per hour after materials, crew, travel, card fees and overhead.">
+<meta name="theme-color" content="#0b1f3a">
+<link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="css/styles.css">
+<link rel="stylesheet" href="css/print.css" media="print">
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+
+<header class="topbar">
+  <div class="topbar-inner">
+    <a class="brand" href="#calculator">
+      <svg class="brand-mark" viewBox="0 0 32 32" aria-hidden="true"><rect width="32" height="32" rx="7" fill="#132c52"/><path d="M8 22V14M14 22V10M20 22V16M26 22V8" stroke="#e2b13c" stroke-width="3" stroke-linecap="round"/></svg>
+      <span><span class="brand-name" data-app-name>Job Profit Calculator</span><span class="brand-by">by <span data-company>Carina Dataworks</span></span></span>
+    </a>
+    <button class="btn btn-ghost-light tour-btn" type="button" id="tourBtn">How it works</button>
+  </div>
+  <nav class="tabs" aria-label="Sections">
+    <a href="#calculator" data-view-link="calculator">Calculator</a>
+    <a href="#jobs" data-view-link="jobs">Saved jobs</a>
+    <a href="#documents" data-view-link="documents">Estimates &amp; invoices</a>
+    <a href="#blueprints" data-view-link="blueprints">Templates &amp; guide</a>
+    <a href="#profile" data-view-link="profile">Business profile</a>
+    <a href="#plans" data-view-link="plans">Plans</a>
+  </nav>
+</header>
+
+<main id="main" tabindex="-1">
+
+<!-- ===================== CALCULATOR ===================== -->
+<section class="view" data-view="calculator" aria-labelledby="calcTitle">
+  <div class="hero">
+    <p class="cred"><span class="cred-badge">Made by professionals, for professionals.</span> <span class="cred-line">Built by someone who does real-world business operations, profit and data work every day.</span></p>
+    <h1 id="calcTitle">Know your price. Know your profit per hour.</h1>
+    <p class="hero-sub">Enter your costs — materials, crew, travel, card fees, overhead — and get the price to quote for the margin or hourly profit you want. Or check what an existing job really pays.</p>
+  </div>
+
+  <div class="modebar" role="tablist" aria-label="Calculator mode">
+    <button role="tab" id="modeReverse" aria-selected="false" aria-controls="calcGrid" data-mode="reverse" type="button" tabindex="-1">
+      <span class="mode-kicker">Pricing a new job?</span>
+      <span class="mode-title">Find my price</span>
+      <span class="mode-desc">Set a target margin or profit per hour. Get the exact price to quote, then turn it into a branded estimate.</span>
+    </button>
+    <button role="tab" id="modeProfit" aria-selected="true" aria-controls="calcGrid" data-mode="profit" type="button">
+      <span class="mode-kicker">Already have a price?</span>
+      <span class="mode-title">Check my profit</span>
+      <span class="mode-desc">Enter what you charge and see net profit, margin and what you really make per hour.</span>
+    </button>
+  </div>
+
+  <div class="jobbar card">
+    <div class="field jobname">
+      <label for="jobName">Job name</label>
+      <input id="jobName" data-bind="name" type="text" placeholder="e.g. Deck repair — Ellis" autocomplete="off">
+    </div>
+    <div class="jobbar-status" id="saveStatus" aria-live="polite"></div>
+    <div class="jobbar-actions">
+      <button class="btn btn-primary" type="button" id="saveJob">Save job</button>
+      <button class="btn" type="button" id="dupJob" title="Save a copy you can reuse as a template">Duplicate</button>
+      <button class="btn" type="button" id="newJob">New job</button>
+      <div class="menu">
+        <button class="btn" type="button" id="moreBtn" aria-haspopup="true" aria-expanded="false" aria-controls="moreMenu">More ▾</button>
+        <div class="menu-list" id="moreMenu" role="menu" hidden>
+          <button role="menuitem" type="button" data-action="estimate">Create estimate from this job</button>
+          <button role="menuitem" type="button" data-action="invoice">Create invoice from this job</button>
+          <button role="menuitem" type="button" data-action="print-jobsheet">Print job sheet / save PDF</button>
+          <button role="menuitem" type="button" data-action="export-csv">Export this job (CSV)</button>
+          <button role="menuitem" type="button" data-action="templates">Load a template…</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="calc-grid" id="calcGrid" role="tabpanel" aria-labelledby="modeProfit">
+    <form class="inputs" id="jobForm" autocomplete="off" novalidate onsubmit="return false">
+
+      <fieldset class="card sec" id="secPrice">
+        <legend><span class="num">1</span> Price</legend>
+        <div class="profit-only">
+          <div class="field big">
+            <label for="price">Price you charge the customer</label>
+            <div class="affix"><span class="pre" aria-hidden="true">$</span><input id="price" data-bind="price" data-num inputmode="decimal" type="text" placeholder="0.00" aria-describedby="price-err price-hint"></div>
+            <p class="hint" id="price-hint">The total on your quote or invoice, before any sales tax you collect.</p>
+            <p class="err" id="price-err" hidden></p>
+          </div>
+        </div>
+        <div class="reverse-only" id="reversePanel">
+          <p class="hint">Fill in your costs below. We'll find the lowest price that hits your target after fees, overhead and tax set-aside.</p>
+          <div class="seg" role="radiogroup" aria-label="Target type">
+            <label><input type="radio" name="targetType" value="margin" checked> Net margin %</label>
+            <label><input type="radio" name="targetType" value="hourly"> Profit per hour</label>
+            <label><input type="radio" name="targetType" value="profit"> Profit $</label>
+          </div>
+          <div class="row2">
+            <div class="field big">
+              <label for="targetValue" id="targetLabel">Target net margin</label>
+              <div class="affix"><span class="pre" id="targetPre" aria-hidden="true" hidden>$</span><input id="targetValue" data-num inputmode="decimal" type="text" value="30" aria-describedby="targetValue-err"><span class="suf" id="targetSuf" aria-hidden="true">%</span></div>
+              <p class="err" id="targetValue-err" hidden></p>
+            </div>
+            <div class="field">
+              <label for="roundTo">Round quote up to</label>
+              <select id="roundTo"><option value="0">Exact cent</option><option value="1">Nearest $1</option><option value="5">Nearest $5</option><option value="10">Nearest $10</option><option value="25" selected>Nearest $25</option><option value="50">Nearest $50</option><option value="100">Nearest $100</option></select>
+            </div>
+          </div>
+          <div class="quote-out" id="quoteOut" aria-live="polite">
+            <div><span class="quote-label">Quote this price</span><strong id="quotePrice">—</strong></div>
+            <p id="quoteNote" class="hint"></p>
+            <div class="quote-actions">
+              <button class="btn btn-gold" type="button" id="quoteEstimate" disabled>Create estimate at this price</button>
+              <button class="btn btn-ghost-light" type="button" id="useQuote" disabled>Use this price</button>
+            </div>
+          </div>
+        </div>
+        <details class="cust">
+          <summary>Customer &amp; job site <span class="muted">(used on estimates and invoices)</span></summary>
+          <div class="row2">
+            <div class="field"><label for="custName">Customer name</label><input id="custName" data-bind="customer.name" type="text" autocomplete="off"></div>
+            <div class="field"><label for="custPhone">Phone</label><input id="custPhone" data-bind="customer.phone" type="tel" autocomplete="off"></div>
+            <div class="field"><label for="custEmail">Email</label><input id="custEmail" data-bind="customer.email" type="email" autocomplete="off"></div>
+            <div class="field"><label for="custAddress">Billing address</label><textarea id="custAddress" data-bind="customer.address" rows="2"></textarea></div>
+            <div class="field span2"><label for="jobAddress">Job site address</label><input id="jobAddress" data-bind="jobAddress" type="text" autocomplete="off"></div>
+          </div>
+        </details>
+      </fieldset>
+
+      <fieldset class="card sec" id="secMaterials">
+        <legend><span class="num">2</span> Materials <output class="sec-total" id="matTotalOut"></output></legend>
+        <div class="seg small" role="radiogroup" aria-label="How to enter materials">
+          <label><input type="radio" name="materialsMode" data-bind="materialsMode" value="itemized" checked> Itemized</label>
+          <label><input type="radio" name="materialsMode" data-bind="materialsMode" value="total"> One total</label>
+        </div>
+        <div class="mat-itemized">
+          <div class="lines" id="materialsLines" data-list="materials"></div>
+          <button class="btn btn-add" type="button" data-add="materials">+ Add material</button>
+        </div>
+        <div class="mat-total field">
+          <label for="materialsTotal">Total materials cost</label>
+          <div class="affix"><span class="pre" aria-hidden="true">$</span><input id="materialsTotal" data-bind="materialsTotal" data-num inputmode="decimal" type="text" placeholder="0.00" aria-describedby="materialsTotal-err"></div>
+          <p class="err" id="materialsTotal-err" hidden></p>
+        </div>
+      </fieldset>
+
+      <fieldset class="card sec" id="secLabor">
+        <legend><span class="num">3</span> Labor &amp; time <output class="sec-total" id="laborTotalOut"></output></legend>
+        <p class="hint">Crew you pay by the hour. Include their burden (payroll tax, workers' comp) in the wage if you want it counted.</p>
+        <div class="lines" id="crewLines" data-list="crew"></div>
+        <button class="btn btn-add" type="button" data-add="crew">+ Add crew member</button>
+        <div class="field owner">
+          <label for="ownerHours">Your own hours on this job</label>
+          <div class="affix"><input id="ownerHours" data-bind="ownerHours" data-num inputmode="decimal" type="text" placeholder="0" aria-describedby="ownerHours-hint ownerHours-err"><span class="suf" aria-hidden="true">hrs</span></div>
+          <p class="hint" id="ownerHours-hint">Quoting, driving, buying materials, working on site, invoicing. Not a cost — your pay comes out of profit, which is the point.</p>
+          <p class="err" id="ownerHours-err" hidden></p>
+        </div>
+      </fieldset>
+
+      <fieldset class="card sec" id="secTravel">
+        <legend><span class="num">4</span> Shipping, delivery &amp; travel <output class="sec-total" id="travelTotalOut"></output></legend>
+        <div class="row3">
+          <div class="field"><label for="shipping">Shipping / delivery fees</label><div class="affix"><span class="pre" aria-hidden="true">$</span><input id="shipping" data-bind="shipping" data-num inputmode="decimal" type="text" placeholder="0.00" aria-describedby="shipping-err"></div><p class="err" id="shipping-err" hidden></p></div>
+          <div class="field"><label for="miles">Miles driven (all trips)</label><div class="affix"><input id="miles" data-bind="miles" data-num inputmode="decimal" type="text" placeholder="0" aria-describedby="miles-err"><span class="suf" aria-hidden="true">mi</span></div><p class="err" id="miles-err" hidden></p></div>
+          <div class="field"><label for="mileRate">Cost per mile</label><div class="affix"><span class="pre" aria-hidden="true">$</span><input id="mileRate" data-bind="mileRate" data-num inputmode="decimal" type="text" placeholder="0.70" aria-describedby="mileRate-hint mileRate-err"></div><p class="hint" id="mileRate-hint">Fuel + wear. The IRS standard rate is a good default.</p><p class="err" id="mileRate-err" hidden></p></div>
+        </div>
+      </fieldset>
+
+      <fieldset class="card sec" id="secFees">
+        <legend><span class="num">5</span> Card &amp; payment fees <output class="sec-total" id="feeTotalOut"></output></legend>
+        <div class="row4">
+          <div class="field"><label for="feePreset">Processor</label>
+            <select id="feePreset" data-bind="fee.preset"><option value="stripe">Stripe — 2.9% + 30¢</option><option value="square">Square — 2.6% + 15¢</option><option value="custom">Custom</option><option value="none">None (cash / check)</option></select></div>
+          <div class="field"><label for="feePct">Percent</label><div class="affix"><input id="feePct" data-bind="fee.pct" data-num inputmode="decimal" type="text" aria-describedby="feePct-err"><span class="suf" aria-hidden="true">%</span></div><p class="err" id="feePct-err" hidden></p></div>
+          <div class="field"><label for="feeFixed">Fixed per payment</label><div class="affix"><span class="pre" aria-hidden="true">$</span><input id="feeFixed" data-bind="fee.fixed" data-num inputmode="decimal" type="text" aria-describedby="feeFixed-err"></div><p class="err" id="feeFixed-err" hidden></p></div>
+          <div class="field"><label for="feePayments">Number of payments</label><input id="feePayments" data-bind="fee.payments" data-num inputmode="numeric" type="text" aria-describedby="feePayments-hint feePayments-err"><p class="hint" id="feePayments-hint">e.g. 2 for deposit + final.</p><p class="err" id="feePayments-err" hidden></p></div>
+        </div>
+      </fieldset>
+
+      <fieldset class="card sec" id="secOther">
+        <legend><span class="num">6</span> Equipment, permits, subs &amp; other <output class="sec-total" id="otherTotalOut"></output></legend>
+        <div class="lines" id="otherLines" data-list="otherCosts"></div>
+        <div class="add-row">
+          <button class="btn btn-add" type="button" data-add="otherCosts" data-cat="equipment">+ Equipment / rental</button>
+          <button class="btn btn-add" type="button" data-add="otherCosts" data-cat="permits">+ Permit</button>
+          <button class="btn btn-add" type="button" data-add="otherCosts" data-cat="subcontractor">+ Subcontractor</button>
+          <button class="btn btn-add" type="button" data-add="otherCosts" data-cat="other">+ Other cost</button>
+        </div>
+      </fieldset>
+
+      <fieldset class="card sec" id="secOverhead">
+        <legend><span class="num">7</span> Overhead &amp; tax set-aside <span class="opt">optional</span></legend>
+        <div class="row3">
+          <div class="field"><label for="ohMode">Overhead allocation</label>
+            <select id="ohMode" data-bind="overhead.mode" aria-describedby="ohMode-hint"><option value="none">None</option><option value="percent">% of job price</option><option value="flat">Flat amount</option></select>
+            <p class="hint" id="ohMode-hint">Insurance, truck payment, phone, software, shop rent — spread across jobs.</p></div>
+          <div class="field" id="ohValueField"><label for="ohValue" id="ohValueLabel">Overhead</label><div class="affix"><span class="pre" id="ohPre" aria-hidden="true">$</span><input id="ohValue" data-bind="overhead.value" data-num inputmode="decimal" type="text" aria-describedby="ohValue-err"><span class="suf" id="ohSuf" aria-hidden="true">%</span></div><p class="err" id="ohValue-err" hidden></p></div>
+          <div class="field"><label for="taxPct">Income tax set-aside</label><div class="affix"><input id="taxPct" data-bind="taxPct" data-num inputmode="decimal" type="text" placeholder="0" aria-describedby="taxPct-hint taxPct-err"><span class="suf" aria-hidden="true">%</span></div><p class="hint" id="taxPct-hint">Share of profit to park for taxes. Only applies when you make a profit.</p><p class="err" id="taxPct-err" hidden></p></div>
+        </div>
+        <div class="field"><label for="jobNotes">Internal notes</label><textarea id="jobNotes" data-bind="notes" rows="2" placeholder="Anything to remember about this job (never shown to customers)"></textarea></div>
+      </fieldset>
+    </form>
+
+    <aside class="results" id="results" aria-labelledby="resultsTitle">
+      <div class="card res-card">
+        <h2 id="resultsTitle" class="visually-hidden">Results</h2>
+        <div class="value-msg" id="valueMsg" aria-live="polite"></div>
+        <div class="kpi-hero">
+          <div class="kpi-main">
+            <span class="kpi-label">Net profit</span>
+            <strong id="outNet" class="kpi-big">—</strong>
+            <span class="kpi-sub" id="outNetSub"></span>
+          </div>
+          <div class="kpi-main">
+            <span class="kpi-label">Profit per hour <span class="muted">after costs</span></span>
+            <strong id="outPph" class="kpi-big">—</strong>
+            <div class="seg tiny" role="radiogroup" aria-label="Hours used for profit per hour">
+              <label><input type="radio" name="hoursBasis" data-bind="hoursBasis" value="all" checked> All hours</label>
+              <label><input type="radio" name="hoursBasis" data-bind="hoursBasis" value="owner"> My hours only</label>
+            </div>
+          </div>
+        </div>
+        <div class="alert alert-loss" id="lossAlert" role="alert" hidden></div>
+        <ul class="warnings" id="warnings"></ul>
+        <dl class="kpis">
+          <div><dt>Net margin</dt><dd id="outMargin">—</dd></div>
+          <div><dt>Markup on costs</dt><dd id="outMarkup">—</dd></div>
+          <div><dt>Total costs</dt><dd id="outCosts">—</dd></div>
+          <div><dt>Gross profit</dt><dd id="outGross">—</dd></div>
+          <div><dt>Billed rate <span class="muted">price ÷ hours</span></dt><dd id="outRate">—</dd></div>
+          <div><dt>Break-even price</dt><dd id="outBE">—</dd></div>
+        </dl>
+        <h3 class="chart-title">Where every dollar goes</h3>
+        <div class="chart" id="chart"></div>
+        <p class="disclaimer" id="resultsDisclaimer">Estimates only, based on the numbers you enter. Not financial or tax advice.</p>
+        <details class="math">
+          <summary>Show the math</summary>
+          <table class="math-table" id="mathTable"></table>
+        </details>
+      </div>
+    </aside>
+  </div>
+
+  <div class="mobilebar" id="mobileBar" aria-hidden="true">
+    <div><span>Net profit</span><strong id="mbNet">—</strong></div>
+    <div><span>Per hour</span><strong id="mbPph">—</strong></div>
+    <a class="btn btn-gold" href="#results" id="mbSee" tabindex="-1">Results</a>
+  </div>
+</section>
+
+<!-- ===================== SAVED JOBS ===================== -->
+<section class="view" data-view="jobs" aria-labelledby="jobsTitle" hidden>
+  <div class="view-head">
+    <div><h1 id="jobsTitle">Saved jobs</h1><p class="hero-sub">Compare jobs side by side. Find out which kind of work actually pays.</p></div>
+    <div class="view-actions">
+      <label class="inline-field" for="jobsSort">Sort by
+        <select id="jobsSort"><option value="updated">Last updated</option><option value="pph">Profit per hour</option><option value="net">Net profit</option><option value="margin">Margin</option><option value="name">Name</option></select></label>
+      <button class="btn" type="button" id="exportAllCsv">Export all (CSV)</button>
+    </div>
+  </div>
+  <div id="jobsEmpty" class="empty card" hidden>
+    <p><strong>No saved jobs yet.</strong> Fill in a job on the calculator and press <em>Save job</em>. Saved jobs stay on this device.</p>
+    <a class="btn btn-primary" href="#calculator">Go to calculator</a>
+  </div>
+  <div class="card table-wrap" id="jobsTableWrap">
+    <table class="compare" id="jobsTable">
+      <caption class="visually-hidden">Saved jobs comparison</caption>
+      <thead><tr><th scope="col">Job</th><th scope="col" class="num">Price</th><th scope="col" class="num">Total costs</th><th scope="col" class="num">Net profit</th><th scope="col" class="num">Margin</th><th scope="col" class="num">Hours</th><th scope="col" class="num">Profit / hr</th><th scope="col"><span class="visually-hidden">Actions</span></th></tr></thead>
+      <tbody></tbody>
+    </table>
+  </div>
+</section>
+
+<!-- ===================== DOCUMENTS ===================== -->
+<section class="view" data-view="documents" aria-labelledby="docsTitle" hidden>
+  <div class="view-head">
+    <div><h1 id="docsTitle">Estimates &amp; invoices</h1><p class="hero-sub">Customer-ready paperwork from your job numbers. Customers see prices only — never your costs, wages or profit.</p></div>
+    <div class="view-actions">
+      <button class="btn btn-primary" type="button" id="newEstimate">New estimate from current job</button>
+      <button class="btn" type="button" id="newInvoice">New invoice from current job</button>
+    </div>
+  </div>
+  <div class="docs-layout">
+    <div class="card docs-list-card">
+      <div class="seg small" role="radiogroup" aria-label="Filter documents">
+        <label><input type="radio" name="docFilter" value="all" checked> All</label>
+        <label><input type="radio" name="docFilter" value="estimate"> Estimates</label>
+        <label><input type="radio" name="docFilter" value="invoice"> Invoices</label>
+      </div>
+      <ul class="docs-list" id="docsList"></ul>
+      <p class="hint" id="docsEmpty" hidden>No documents yet. Create an estimate from the current job to get started.</p>
+    </div>
+    <div class="doc-workspace" id="docWorkspace" hidden>
+      <form class="card doc-editor" id="docForm" autocomplete="off" novalidate onsubmit="return false">
+        <div class="doc-editor-head">
+          <h2 id="docEditorTitle">Estimate</h2>
+          <div class="doc-actions">
+            <button class="btn btn-primary" type="button" id="printDoc">Print / save PDF</button>
+            <button class="btn btn-gold" type="button" id="convertDoc">Convert to invoice</button>
+            <button class="btn" type="button" id="dupDoc">Duplicate</button>
+            <button class="btn btn-danger-ghost" type="button" id="delDoc">Delete</button>
+          </div>
+        </div>
+        <div class="row4">
+          <div class="field"><label for="docNumber">Number</label><input id="docNumber" data-dbind="number" type="text"></div>
+          <div class="field"><label for="docStatus">Status</label><select id="docStatus" data-dbind="status"></select></div>
+          <div class="field"><label for="docDate">Date</label><input id="docDate" data-dbind="date" type="date"></div>
+          <div class="field"><label for="docDue" id="docDueLabel">Due date</label><input id="docDue" data-dbind="dueDate" type="date"></div>
+        </div>
+        <div class="row2">
+          <div class="field"><label for="docCustName">Customer name</label><input id="docCustName" data-dbind="customer.name" type="text"></div>
+          <div class="field"><label for="docCustPhone">Customer phone</label><input id="docCustPhone" data-dbind="customer.phone" type="tel"></div>
+          <div class="field"><label for="docCustEmail">Customer email</label><input id="docCustEmail" data-dbind="customer.email" type="email"></div>
+          <div class="field"><label for="docCustAddr">Billing address</label><textarea id="docCustAddr" data-dbind="customer.address" rows="2"></textarea></div>
+          <div class="field"><label for="docJobAddr">Job site address</label><input id="docJobAddr" data-dbind="jobAddress" type="text"></div>
+          <div class="field"><label for="docTitle">Project title</label><input id="docTitle" data-dbind="title" type="text"></div>
+        </div>
+        <h3 class="sub">Line items</h3>
+        <div class="lines doc-lines-ed" id="docLines"></div>
+        <button class="btn btn-add" type="button" id="addDocLine">+ Add line</button>
+        <details class="rebuild">
+          <summary>Rebuild line items from a job</summary>
+          <div class="row4">
+            <div class="field"><label for="rbJob">Job</label><select id="rbJob"></select></div>
+            <div class="field"><label for="rbMarkup">Markup on materials &amp; costs</label><div class="affix"><input id="rbMarkup" data-num inputmode="decimal" type="text" aria-describedby="rbMarkup-err"><span class="suf" aria-hidden="true">%</span></div><p class="err" id="rbMarkup-err" hidden></p></div>
+            <div class="field"><label for="rbPricing">Pricing</label><select id="rbPricing"><option value="match">Match job price (labor absorbs the rest)</option><option value="markup">Cost + markup on every line</option></select></div>
+            <div class="field"><label for="rbDetail">Detail</label><select id="rbDetail"><option value="itemized">Itemized</option><option value="summary">Summary (3 lines)</option></select></div>
+          </div>
+          <button class="btn" type="button" id="rbGo">Rebuild line items</button>
+          <p class="hint">Customers only ever see the resulting prices. Your costs, wages and profit are never written to the document.</p>
+        </details>
+        <h3 class="sub">Totals</h3>
+        <div class="row4">
+          <div class="field"><label for="docDiscMode">Discount type</label><select id="docDiscMode" data-dbind="discount.mode"><option value="flat">$ amount</option><option value="percent">% of subtotal</option></select></div>
+          <div class="field"><label for="docDisc">Discount</label><input id="docDisc" data-dbind="discount.value" data-num inputmode="decimal" type="text" placeholder="0" aria-describedby="docDisc-err"><p class="err" id="docDisc-err" hidden></p></div>
+          <div class="field"><label for="docTax">Sales tax</label><div class="affix"><input id="docTax" data-dbind="salesTaxPct" data-num inputmode="decimal" type="text" placeholder="0" aria-describedby="docTax-err"><span class="suf" aria-hidden="true">%</span></div><p class="err" id="docTax-err" hidden></p></div>
+          <div class="field"><label for="docPaid" id="docPaidLabel">Amount paid</label><div class="affix"><span class="pre" aria-hidden="true">$</span><input id="docPaid" data-dbind="paid" data-num inputmode="decimal" type="text" placeholder="0.00" aria-describedby="docPaid-err"></div><p class="err" id="docPaid-err" hidden></p></div>
+        </div>
+        <dl class="doc-sum" id="docSum" aria-live="polite"></dl>
+        <div class="row2">
+          <div class="field"><label for="docTerms">Payment terms</label><textarea id="docTerms" data-dbind="terms" rows="3"></textarea></div>
+          <div class="field"><label for="docNotes">Notes to customer</label><textarea id="docNotes" data-dbind="notes" rows="3"></textarea></div>
+        </div>
+        <p class="save-hint" id="docSaved" aria-live="polite">Changes save automatically on this device.</p>
+      </form>
+      <div class="preview-wrap">
+        <p class="preview-label">Customer preview <span class="muted">— exactly what prints</span></p>
+        <p class="profile-hint" id="profileHint" hidden>Add your company name, logo, license and pay-online link in <a href="#profile" data-view-link="profile">Business profile</a> — they print on every estimate and invoice.</p>
+        <div class="paper" id="docPreview" tabindex="0" role="region" aria-label="Customer preview of the document"></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ===================== TEMPLATES & GUIDE ===================== -->
+<section class="view" data-view="blueprints" aria-labelledby="bpTitle" hidden>
+  <div class="view-head"><div><h1 id="bpTitle">Templates &amp; guide</h1><p class="hero-sub">A blueprint to go off. Load a ready-made job, change the numbers to yours, and save it as your own template.</p></div></div>
+  <div class="tpl-grid" id="tplGrid"></div>
+  <div class="card downloads">
+    <h2>Take it to the job site</h2>
+    <div class="dl-grid">
+      <div><h3>Blank job worksheet</h3><p>A spreadsheet-friendly CSV with every field and what it means. Fill it in Excel, Google Sheets or Numbers, or print it.</p><button class="btn" id="dlWorksheet" type="button">Download worksheet (CSV)</button></div>
+      <div><h3>One-page field guide</h3><p>Every field explained, how profit per hour is calculated, and a worked example. Prints on one Letter page.</p><a class="btn" id="openGuide" href="guide.html" target="_blank" rel="noopener">Open printable guide</a></div>
+    </div>
+  </div>
+</section>
+
+<!-- ===================== BUSINESS PROFILE ===================== -->
+<section class="view" data-view="profile" aria-labelledby="profTitle" hidden>
+  <div class="view-head"><div><h1 id="profTitle">Business profile</h1><p class="hero-sub">Shown on your estimates and invoices. Stored only in this browser.</p></div></div>
+  <form class="card profile-form" id="profileForm" autocomplete="off" novalidate onsubmit="return false">
+    <div class="row2">
+      <div class="field"><label for="pfName">Company name</label><input id="pfName" data-pbind="companyName" type="text"></div>
+      <div class="field"><label for="pfLicense">License number</label><input id="pfLicense" data-pbind="license" type="text"></div>
+      <div class="field"><label for="pfPhone">Phone</label><input id="pfPhone" data-pbind="phone" type="tel"></div>
+      <div class="field"><label for="pfEmail">Email</label><input id="pfEmail" data-pbind="email" type="email"></div>
+      <div class="field"><label for="pfWeb">Website</label><input id="pfWeb" data-pbind="website" type="text"></div>
+      <div class="field"><label for="pfAddress">Address</label><textarea id="pfAddress" data-pbind="address" rows="2"></textarea></div>
+      <div class="field span2"><label for="pfPayLink">Pay online link <span class="opt">optional</span></label><input id="pfPayLink" data-pbind="paymentLink" type="url" inputmode="url" placeholder="https://buy.stripe.com/… · square.link/… · paypal.me/… · venmo.com/u/…" aria-describedby="pfPayLink-hint pfPayLink-err"><p class="hint" id="pfPayLink-hint">Printed on invoices as a link and a scannable QR code. Use a payment link from Stripe, Square, PayPal, Venmo or similar.</p><p class="err" id="pfPayLink-err" hidden></p></div>
+    </div>
+    <div class="logo-row">
+      <div class="logo-preview" id="logoPreview" aria-live="polite"><span class="muted">No logo</span></div>
+      <div class="field">
+        <label for="pfLogo">Logo (PNG, JPG, GIF or WebP, up to 2 MB)</label>
+        <input id="pfLogo" type="file" accept="image/png,image/jpeg,image/gif,image/webp" aria-describedby="pfLogo-err">
+        <p class="err" id="pfLogo-err" hidden></p>
+        <button class="btn btn-danger-ghost" type="button" id="pfLogoRemove" hidden>Remove logo</button>
+      </div>
+    </div>
+    <h2 class="sub">Document defaults</h2>
+    <div class="row4">
+      <div class="field"><label for="pfDue">Invoice due in (days)</label><input id="pfDue" data-pbind="dueDays" data-num inputmode="numeric" type="text"></div>
+      <div class="field"><label for="pfValid">Estimates valid for (days)</label><input id="pfValid" data-pbind="validDays" data-num inputmode="numeric" type="text"></div>
+      <div class="field"><label for="pfTax">Default sales tax</label><div class="affix"><input id="pfTax" data-pbind="salesTaxPct" data-num inputmode="decimal" type="text"><span class="suf" aria-hidden="true">%</span></div></div>
+      <div class="field"><label for="pfMarkup">Default markup on materials</label><div class="affix"><input id="pfMarkup" data-pbind="markupPct" data-num inputmode="decimal" type="text"><span class="suf" aria-hidden="true">%</span></div></div>
+      <div class="field"><label for="pfEstPrefix">Estimate prefix</label><input id="pfEstPrefix" data-pbind="estimatePrefix" type="text"></div>
+      <div class="field"><label for="pfEstNext">Next estimate #</label><input id="pfEstNext" data-pbind="nextEstimate" data-num inputmode="numeric" type="text"></div>
+      <div class="field"><label for="pfInvPrefix">Invoice prefix</label><input id="pfInvPrefix" data-pbind="invoicePrefix" type="text"></div>
+      <div class="field"><label for="pfInvNext">Next invoice #</label><input id="pfInvNext" data-pbind="nextInvoice" data-num inputmode="numeric" type="text"></div>
+    </div>
+    <div class="row2">
+      <div class="field span2"><label for="pfTerms">Default payment terms</label><textarea id="pfTerms" data-pbind="paymentTerms" rows="2"></textarea></div>
+      <div class="field"><label for="pfEstNotes">Default estimate notes</label><textarea id="pfEstNotes" data-pbind="estimateNotes" rows="3"></textarea></div>
+      <div class="field"><label for="pfInvNotes">Default invoice notes</label><textarea id="pfInvNotes" data-pbind="invoiceNotes" rows="3"></textarea></div>
+    </div>
+    <p class="save-hint" id="profileSaved" aria-live="polite">Changes save automatically on this device.</p>
+    <h2 class="sub" id="dataTitle">Your data &amp; backups</h2>
+    <p class="hint"><strong>Everything is stored on this device only</strong> — in this browser's local storage. Nothing is uploaded. Clearing your browser data or switching devices loses it, so download a backup now and then. A backup is one JSON file containing your business profile, saved jobs, estimates and invoices.</p>
+    <div class="add-row">
+      <button class="btn btn-primary" type="button" data-backup>Download backup</button>
+      <label class="btn" for="restoreFile">Restore from backup…</label>
+      <input class="visually-hidden" type="file" id="restoreFile" accept="application/json,.json">
+    </div>
+    <p class="err" id="restore-err" role="alert" hidden></p>
+  </form>
+</section>
+
+<!-- ===================== PLANS ===================== -->
+<section class="view" data-view="plans" aria-labelledby="plansTitle" hidden>
+  <div class="view-head"><div><h1 id="plansTitle">Plans</h1><p class="hero-sub">The calculator is free to use. A contractor subscription is planned — here's what it's meant to include.</p></div></div>
+  <div class="plans">
+    <div class="card plan">
+      <h2>Free</h2><p class="plan-price">Available now</p>
+      <ul><li>Unlimited job calculations</li><li>Reverse pricing from a target margin or hourly</li><li>Saved jobs &amp; comparison on this device</li><li>Estimates, invoices &amp; job sheets (print / PDF)</li><li>CSV export, templates and field guide</li></ul>
+    </div>
+    <div class="card plan plan-pro">
+      <span class="badge">Planned</span>
+      <h2>Contractor Pro</h2><p class="plan-price">Coming later · pricing to be announced</p>
+      <ul><li>Sync jobs and documents across phone, tablet and desktop</li><li>Email estimates with online accept &amp; e-signature</li><li>Online invoice payments and automatic paid status</li><li>Job-type reports: which work pays best per hour</li><li>Team seats for office and crew leads</li><li>QuickBooks / spreadsheet export</li></ul>
+      <p class="hint">Nothing to buy today. No payment details are collected anywhere in this app.</p>
+    </div>
+  </div>
+</section>
+</main>
+
+<footer class="site-foot">
+  <p><span data-app-name>Job Profit Calculator</span> <span class="dot" aria-hidden="true">·</span> by <span data-company>Carina Dataworks</span></p>
+  <p class="small foot-data">Your jobs, estimates and invoices are stored on this device only. <button type="button" class="linklike" data-backup>Download a backup</button> · <a href="#profile" data-goto-data>Restore</a></p>
+  <p class="muted small">Estimates only, based on the numbers you enter. Not financial or tax advice. <a class="foot-link" href="terms.html">Terms</a> · <a class="foot-link" href="privacy.html">Privacy</a></p>
+</footer>
+
+<!-- Onboarding tour -->
+<div class="tour" id="tour" role="dialog" aria-modal="false" aria-labelledby="tourTitle" hidden>
+  <p class="tour-step" id="tourStep">Step 1 of 3</p>
+  <p class="tour-cred" id="tourCred"><strong>Made by professionals, for professionals.</strong> Built by someone who does real-world business operations, profit and data work every day.</p>
+  <h2 id="tourTitle"></h2>
+  <p id="tourBody"></p>
+  <div class="tour-agree" id="tourAgree" hidden>
+    <label><input type="checkbox" id="agreeTerms"> <span>I agree to the <a href="terms.html" target="_blank" rel="noopener">Terms of Use</a> and have read the <a href="privacy.html" target="_blank" rel="noopener">Privacy notice</a>.</span></label>
+    <p class="hint">Results are estimates based on your numbers. You're responsible for your own pricing, quotes and taxes.</p>
+  </div>
+  <div class="tour-actions">
+    <button class="btn btn-link-light" type="button" id="tourSkip">Skip</button>
+    <span class="spacer"></span>
+    <button class="btn btn-ghost-light" type="button" id="tourBack">Back</button>
+    <button class="btn btn-gold" type="button" id="tourNext">Next</button>
+  </div>
+</div>
+
+<div class="toast" id="toast" role="status" aria-live="polite" hidden><span id="toastMsg"></span><button type="button" class="btn btn-link-light" id="toastUndo" hidden>Undo</button></div>
+
+<div id="printRoot" class="print-root" aria-hidden="true"></div>
+
+<script src="js/config.js"></script>
+<script src="js/vendor/qrcode.js"></script>
+<script src="js/calc.js"></script>
+<script src="js/docs.js"></script>
+<script src="js/templates.js"></script>
+<script src="js/store.js"></script>
+<script src="js/csv.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>

@@ -1,0 +1,16 @@
+/* Print: Letter, black-and-white friendly. Only #printRoot prints (customer doc or internal job sheet). */
+@page { size: Letter; margin: 0.5in; }
+html, body { background: #fff !important; }
+body > *:not(#printRoot) { display: none !important; }
+#printRoot { display: block !important; }
+.cdoc, .jobsheet { min-width: 0 !important; font-size: 10.5pt; color: #000; }
+.doc-head { border-bottom-color: #000; }
+.doc-lines thead { display: table-header-group; }
+.doc-lines tr, .doc-totals, .doc-sign, .doc-pay, .js-kpis, .doc-notes { break-inside: avoid; page-break-inside: avoid; }
+.doc-bottom { break-inside: avoid; }
+.doc-lines th { border-bottom-color: #000; }
+.doc-balance th, .doc-balance td, .js-table .grp td { background: #eee !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+.doc-pay a { color: #000; text-decoration: underline; }
+.doc-pay a::after { content: ""; }
+.js-cols { grid-template-columns: 1.25fr 1fr; }
+a { color: #000; }
