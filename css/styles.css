@@ -451,8 +451,8 @@ details.rebuild { background: var(--navy-50); border-radius: var(--radius-sm); p
 .reverse-only .seg { display: grid; grid-template-columns: repeat(3, 1fr); width: 100%; }
 .reverse-only .seg label { justify-content: center; text-align: center; padding: 4px 6px; line-height: 1.15; }
 .profile-hint { background: var(--gold-50); border: 1px solid #efd58e; border-radius: var(--radius-sm); padding: 8px 10px; font-size: .86rem; margin: 0 0 10px; }
-.paper { container-type: inline-size; }
-@container (max-width: 600px) {
+.paper { container: paper / inline-size; }
+@container paper (max-width: 600px) {
   .cdoc, .jobsheet { min-width: 0; font-size: 12.5px; }
   .doc-head { flex-direction: column; gap: 10px; }
   .doc-title { text-align: left; }
@@ -468,3 +468,138 @@ details.rebuild { background: var(--navy-50); border-radius: var(--radius-sm); p
 .logo-row .field .btn { align-self: flex-start; margin-top: 6px; }
 input[type="file"] { font-size: .9rem; max-width: 100%; }
 input[type="file"]::file-selector-button { min-height: 40px; padding: 6px 12px; margin-right: 10px; border-radius: var(--radius-sm); border: 1px solid var(--line); background: #fff; color: var(--navy-900); font-weight: 600; cursor: pointer; }
+
+/* =====================================================================
+   Wide desktop screens (16:9 and 16:10: 1280×720 → 1920×1080, MacBooks)
+   Phones and print are unaffected: everything below is min-width ≥ 1200px.
+   ===================================================================== */
+@media screen { body { display: flex; flex-direction: column; min-height: 100vh; } }
+main { width: 100%; flex: 1 0 auto; }
+.site-foot { flex: none; }
+.pf-first { margin-top: 0; }
+
+@media (min-width: 1200px) {
+  :root { --maxw: 1440px; --gutter: 28px; }
+  main { max-width: calc(var(--maxw) + 2 * var(--gutter)); padding: 18px var(--gutter) 40px; }
+  html { scroll-padding-top: 80px; }
+  /* one-row top bar: brand · tabs · help */
+  .topbar { display: grid; grid-template-columns: auto 1fr auto; align-items: center; column-gap: 24px;
+    padding: 0 max(var(--gutter), calc((100% - var(--maxw)) / 2)); }
+  .topbar-inner { display: contents; }
+  .brand { grid-column: 1; grid-row: 1; padding: 10px 0; }
+  .tabs { grid-column: 2; grid-row: 1; margin: 0; padding: 0; justify-content: center; align-self: stretch; }
+  .tabs a { padding: 0 12px; min-height: 60px; border-bottom-width: 3px; border-top: 3px solid transparent; }
+  .tour-btn { grid-column: 3; grid-row: 1; }
+  .results { top: 80px; max-height: calc(100vh - 96px); }
+  .preview-wrap { top: 80px; }
+
+  /* compact hero: headline left, mode cards right */
+  section[data-view="calculator"] { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr); column-gap: 20px; align-items: center; }
+  section[data-view="calculator"] > .hero { padding: 0; margin-bottom: 14px; }
+  section[data-view="calculator"] > .modebar { margin-bottom: 14px; }
+  section[data-view="calculator"] > .jobbar, section[data-view="calculator"] > .calc-grid { grid-column: 1 / -1; }
+  .hero h1 { font-size: 1.85rem; }
+  .hero-sub { font-size: .95rem; }
+  .cred { margin-bottom: 8px; }
+  .modebar [role="tab"] { padding: 12px 14px; height: 100%; }
+  .jobbar { padding: 10px 14px; grid-template-columns: minmax(260px, 1fr) auto auto; }
+
+  .calc-grid { grid-template-columns: minmax(0, 1fr) clamp(400px, 31vw, 500px); gap: 20px; }
+
+  .tpl-grid { grid-template-columns: repeat(3, 1fr); }
+  .profile-form { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); column-gap: 32px; align-items: start; }
+  .profile-form .pf-b .row4 { grid-template-columns: 1fr 1fr; }
+  .plans { grid-template-columns: 1fr 1.25fr; }
+}
+
+/* Short wide screens (720–900px tall): tighten vertical rhythm so results stay in view */
+@media (min-width: 1200px) and (max-height: 920px) {
+  main { padding-top: 14px; }
+  .hero h1 { font-size: 1.6rem; }
+  .hero-sub { font-size: .9rem; margin-top: 4px; }
+  .mode-desc { font-size: .78rem; }
+  .modebar [role="tab"] { padding: 10px 12px; }
+  .mode-title { font-size: 1.02rem; }
+  .res-card { padding: 14px; }
+  .value-msg { padding: 8px 10px; font-size: .92rem; margin-bottom: 10px; }
+  .kpi-main { padding: 10px 12px; }
+  .kpi-big { font-size: 1.7rem; }
+  .kpis { gap: 6px; margin-bottom: 12px; }
+  .kpis > div { padding: 7px 9px; }
+  .kpis dd { font-size: 1.02rem; }
+  fieldset.card { padding: 14px; margin-bottom: 12px; }
+}
+
+/* Very wide screens: inputs flow in two columns next to the results */
+@media (min-width: 1540px) {
+  :root { --maxw: 1760px; }
+  .inputs { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 0 16px; align-items: start; }
+  .calc-grid { grid-template-columns: minmax(0, 1fr) clamp(420px, 27vw, 520px); }
+  .in-col-b .row3, .in-col-b .row4 { grid-template-columns: 1fr 1fr; }
+  .tpl-grid { grid-template-columns: repeat(5, 1fr); }
+  .dl-grid { grid-template-columns: 1fr 1fr; }
+}
+
+
+/* Line-item rows adapt to the width of their own column (container queries), not the window:
+   wide column → one row per item; narrow column (phones, split desktop columns) → stacked. */
+.lines { container: lines / inline-size; }
+@container lines (min-width: 680px) {
+  .line.mat, .line.crew { grid-template-columns: minmax(0, 1fr) 76px 124px 92px 44px; }
+  .line.other { grid-template-columns: 190px minmax(0, 1fr) 132px 44px; }
+  .docline { grid-template-columns: minmax(0, 1fr) 64px 64px 118px 58px 96px 44px; }
+}
+@container lines (max-width: 679px) {
+  .line.mat, .line.crew { grid-template-columns: 1fr 1.25fr auto; }
+  .line.mat .f-name, .line.crew .f-name { grid-column: 1 / 3; grid-row: 1; }
+  .line .icon-btn { grid-column: 3; grid-row: 1; }
+  .line.mat .line-total, .line.crew .line-total { grid-column: auto; grid-row: auto; text-align: right; align-self: end; padding: 0 2px 14px; }
+  .line.other { grid-template-columns: 1fr 1fr auto; }
+  .line.other .f-cat { grid-column: 1; grid-row: 1; }
+  .line.other .f-cost { grid-column: 2; grid-row: 1; }
+  .line.other .icon-btn { grid-column: 3; grid-row: 1; }
+  .line.other .f-cat + .f-name { grid-column: 1 / -1; grid-row: 2; }
+  .docline { grid-template-columns: 1fr 1fr 1fr auto; }
+  .docline .f-name { grid-column: 1 / 4; grid-row: 1; }
+  .docline .icon-btn { grid-column: 4; grid-row: 1; }
+  .docline .f-cost { grid-column: span 2; }
+  .docline .f-tax { flex-direction: row; align-items: center; gap: 6px; grid-column: 1 / 3; }
+  .docline .line-total { grid-column: 3 / 5; padding: 0 2px 6px; align-self: center; }
+  .line + .line label { position: static !important; width: auto !important; height: auto !important; overflow: visible !important; clip: auto !important; }
+}
+
+@media (min-width: 1200px) {
+  .lines .line + .line label { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+  .seg.tiny label { white-space: nowrap; }
+  .kpi-label, .kpi-sub { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .calc-grid { grid-template-columns: minmax(0, 1fr) clamp(440px, 33vw, 500px); }
+  /* documents: compact list strip, editor and preview side by side */
+  .docs-list-card { display: flex; align-items: center; gap: 12px; padding: 10px 12px; }
+  .docs-list-card .seg { margin: 0; flex: none; }
+  .docs-list { display: flex; gap: 8px; overflow-x: auto; flex: 1; padding: 2px; }
+  .docs-list li { flex: 0 0 230px; }
+  .docs-list-card .hint { margin: 0; }
+  .doc-editor-head { flex-direction: row; flex-wrap: wrap; align-items: center; justify-content: space-between; }
+  .doc-workspace { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+  .cdoc, .jobsheet { min-width: 0; }
+}
+@media (min-width: 1200px) and (max-height: 820px) {
+  section[data-view="calculator"] > .hero .hero-sub { display: none; }
+}
+@media (min-width: 1540px) {
+  .calc-grid { grid-template-columns: minmax(0, 1fr) clamp(440px, 27vw, 520px); }
+  .inputs { grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr); }
+}
+
+@media (min-width: 1200px) {
+  .seg.tiny { flex-wrap: nowrap; max-width: 100%; }
+  .seg.tiny label { padding: 0 7px; font-size: .74rem; min-height: 30px; }
+}
+
+/* Safari/WebKit: draw selects ourselves so they match inputs (no grey native gradient, same height) */
+select {
+  -webkit-appearance: none; appearance: none; padding-right: 34px; text-overflow: ellipsis;
+  background: #fff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1.5l5 5 5-5' fill='none' stroke='%23334155' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") no-repeat right 12px center;
+}
+input[type="date"] { -webkit-appearance: none; appearance: none; display: block; }
+input[type="date"]::-webkit-date-and-time-value { text-align: left; }

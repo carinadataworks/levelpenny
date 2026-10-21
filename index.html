@@ -79,6 +79,7 @@
 
   <div class="calc-grid" id="calcGrid" role="tabpanel" aria-labelledby="modeProfit">
     <form class="inputs" id="jobForm" autocomplete="off" novalidate onsubmit="return false">
+      <div class="in-col in-col-a">
 
       <fieldset class="card sec" id="secPrice">
         <legend><span class="num">1</span> Price</legend>
@@ -159,6 +160,8 @@
         </div>
       </fieldset>
 
+      </div>
+      <div class="in-col in-col-b">
       <fieldset class="card sec" id="secTravel">
         <legend><span class="num">4</span> Shipping, delivery &amp; travel <output class="sec-total" id="travelTotalOut"></output></legend>
         <div class="row3">
@@ -201,6 +204,7 @@
         </div>
         <div class="field"><label for="jobNotes">Internal notes</label><textarea id="jobNotes" data-bind="notes" rows="2" placeholder="Anything to remember about this job (never shown to customers)"></textarea></div>
       </fieldset>
+      </div>
     </form>
 
     <aside class="results" id="results" aria-labelledby="resultsTitle">
@@ -371,6 +375,8 @@
 <section class="view" data-view="profile" aria-labelledby="profTitle" hidden>
   <div class="view-head"><div><h1 id="profTitle">Business profile</h1><p class="hero-sub">Shown on your estimates and invoices. Stored only in this browser.</p></div></div>
   <form class="card profile-form" id="profileForm" autocomplete="off" novalidate onsubmit="return false">
+    <div class="pf-col pf-a">
+    <h2 class="sub pf-first">Business details</h2>
     <div class="row2">
       <div class="field"><label for="pfName">Company name</label><input id="pfName" data-pbind="companyName" type="text"></div>
       <div class="field"><label for="pfLicense">License number</label><input id="pfLicense" data-pbind="license" type="text"></div>
@@ -389,7 +395,9 @@
         <button class="btn btn-danger-ghost" type="button" id="pfLogoRemove" hidden>Remove logo</button>
       </div>
     </div>
-    <h2 class="sub">Document defaults</h2>
+    </div>
+    <div class="pf-col pf-b">
+    <h2 class="sub pf-first">Document defaults</h2>
     <div class="row4">
       <div class="field"><label for="pfDue">Invoice due in (days)</label><input id="pfDue" data-pbind="dueDays" data-num inputmode="numeric" type="text"></div>
       <div class="field"><label for="pfValid">Estimates valid for (days)</label><input id="pfValid" data-pbind="validDays" data-num inputmode="numeric" type="text"></div>
@@ -414,6 +422,7 @@
       <input class="visually-hidden" type="file" id="restoreFile" accept="application/json,.json">
     </div>
     <p class="err" id="restore-err" role="alert" hidden></p>
+    </div>
   </form>
 </section>
 

@@ -99,10 +99,11 @@ Owner time is deliberately *not* a cost: the owner's pay is the profit, which is
 ```bash
 npm install          # dev deps: playwright-core, axe-core
 npm test             # 40 unit tests (node:test) — every calculation hand-checked
-npm run test:e2e     # 23-step headless Chromium run, writes screens/
+npm run test:e2e     # 23-step Chromium run (tests/e2e.js) + 17-step wide-screen/Safari run (tests/e2e-wide.js)
 ```
 
-The e2e test needs a Chromium that matches `playwright-core` (`npx playwright-core install chromium` if missing) and
+The e2e tests need a Chromium and a WebKit that match `playwright-core` (`npx playwright-core install chromium webkit`,
+plus `npx playwright-core install-deps webkit` on Linux) and
 `pdfinfo`/`pdftoppm` (poppler) for page counts and print screenshots.
 
 What the e2e test does, like a contractor: first-run tour + terms; checks the example's numbers; enters a fence job from
@@ -111,6 +112,20 @@ impossible target, keyboard tabs); business profile with logo upload and pay lin
 estimate, invoice and job sheet to Letter PDFs; converts estimate → invoice, records payment, PAID stamp; CSV exports and
 worksheet; templates, duplicate, delete + undo; backup → restore on a fresh browser; axe-core on every view and page;
 mobile 390×844; renaming via config; opening from `file://`; and fails on any console error/warning, page error or failed request.
+
+`tests/e2e-wide.js` opens the app in **Chromium and WebKit (Safari's engine)** at every target desktop size —
+16:9 1920×1080, 1600×900, 1366×768, 1280×720 and MacBook 16:10 1440×900, 1512×982, 1728×1117 — and checks that inputs
+and results sit side by side (results ≥ 430px, inputs ≥ 640px), the top bar is one row, net profit is visible without
+scrolling, no visible text is cut off, estimate editor and preview sit side by side, and no view scrolls sideways.
+It also checks WebKit print media (estimate and invoice fit one Letter page; Playwright can only make PDFs in Chromium,
+so WebKit is measured at the 7.5×10in printable area) and runs an iPhone 13 (WebKit, 390×844) pass over every screen.
+
+### Desktop layout
+Desktop is the primary target. From 1200px wide: one-row top bar; hero and the two mode cards side by side; inputs left,
+results pinned right. From 1540px: inputs split into two columns (price, materials, labor | travel, fees, other,
+overhead). Line-item rows use container queries, so they go to one row when their column is wide enough and stack
+otherwise, and long names are never cut off. Short laptop screens (height 820px or less) hide the hero subtitle. Phones
+(< 560px) and print use the same layout as before.
 
 ### Privacy guarantee (customer documents)
 - `JobDocs.buildLinesFromJob()` is the only bridge from costs to customer prices; it outputs only
@@ -137,7 +152,7 @@ js/csv.js             CSV export + blank worksheet
 js/templates.js       ready-made job blueprints
 js/app.js             UI controller
 js/vendor/qrcode.js   QR generator (qrcode-generator 1.4.4, MIT, Kazuhiko Arase)
-tests/                unit tests, e2e test, static server
+tests/                unit tests, e2e tests (e2e.js, e2e-wide.js), static server
 screens/              screenshots, sample PDFs and CSVs from the last e2e run
 ```
 
