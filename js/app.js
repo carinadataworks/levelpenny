@@ -133,7 +133,7 @@
       wage = wage.replace(/<\/div>$/, '<p class="hint loaded-rate" id="c-load-' + i + '" aria-live="polite"></p></div>');
       return '<div class="line crew' + (sub ? ' is-sub' : '') + '" data-i="' + i + '">' + field('c-name-' + i, 'Role / name', 'name', p.name, { cls: 'f-name', ph: 'e.g. Helper' }) + typeSel +
         wage + field('c-hours-' + i, 'Hours', 'hours', p.hours, { num: 1, cls: 'f-qty', ph: '0' }) +
-        field('c-pd-' + i, 'Per diem / travel pay', 'perDiem', sub ? '' : p.perDiem, { num: 1, pre: '$', cls: 'f-pd', ph: '0.00' }).replace('<input ', sub ? '<input disabled title="1099 subcontractors get no burden or per diem" ' : '<input ') +
+        field('c-pd-' + i, 'Per diem / travel', 'perDiem', sub ? '' : p.perDiem, { num: 1, pre: '$', cls: 'f-pd', ph: '0.00' }).replace('<input ', sub ? '<input disabled title="1099 subcontractors get no burden or per diem" ' : '<input ') +
         '<output class="line-total" aria-label="Line total"></output><button type="button" class="icon-btn" data-remove aria-label="Remove crew member ' + esc(p.name || (i + 1)) + '">×</button><p class="err row-err" hidden></p></div>';
     }).join('') || '<p class="hint empty-line">No paid crew — just you? Leave this empty and enter your hours below.</p>';
     $('#otherLines').innerHTML = j.otherCosts.map(function (o, i) {

@@ -51,6 +51,8 @@ const all = []; let states = 0;
         await click('#tourNext');
         await p.evaluate(() => window.scrollTo(0, 0)); await p.waitForTimeout(300);
         await at('calculator');
+        await click('#burdenBox summary'); await p.selectOption('#c-type-1', 'sub'); await at('labor-burden', null, true);
+        await p.selectOption('#c-type-1', 'employee'); await click('#burdenBox summary');
         await click('#moreBtn'); await at('more-menu', null, true); await p.keyboard.press('Escape');
         if (await p.isVisible('#moreMenu')) await click('#moreBtn');
         await click('#modeReverse'); await at('find-my-price');
