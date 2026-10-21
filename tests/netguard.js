@@ -15,8 +15,10 @@ function guardContext(ctx, base, blocked, label) {
   });
 }
 /**
- * The live signup endpoint is FormSubmit (js/config.js). Tests never submit for real: every
- * formsubmit.co request is answered locally like FormSubmit's AJAX API and logged in `submissions`.
+ * The live signup endpoint is a Google Apps Script web app (APP_CONFIG.SIGNUP_SCRIPT_URL); the fallback
+ * is FormSubmit (SIGNUP_ENDPOINT). Tests never submit for real: every script.google.com/macros/ and
+ * formsubmit.co request is answered locally and logged in `submissions` ({url, method, headers, body};
+ * Apps Script bodies are form-encoded and logged as a plain object).
  */
 const FS_CORS = { 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Methods': 'POST, OPTIONS', 'Access-Control-Allow-Headers': 'Content-Type, Accept' };
 function fakeFormSubmit(ctx, submissions) {
@@ -28,15 +30,24 @@ function fakeFormSubmit(ctx, submissions) {
     return route.fulfill({ status: 200, contentType: 'application/json', headers: FS_CORS, body: JSON.stringify({ success: 'true', message: 'The form was submitted successfully.' }) });
   });
 }
-/** Patch browser.newContext so every context it makes is guarded (and FormSubmit is faked). */
+function fakeAppsScript(ctx, submissions) {
+  return ctx.route(/^https:\/\/script\.google(usercontent)?\.com\/macros\//, route => {
+    const req = route.request();
+    submissions.push({ url: req.url(), method: req.method(), headers: req.headers(), body: Object.fromEntries(new URLSearchParams(req.postData() || '')) });
+    return route.fulfill({ status: 200, contentType: 'application/json', body: '{"ok":true}' });
+  });
+}
+/** Patch browser.newContext so every context it makes is guarded (and Apps Script + FormSubmit are faked). */
 function guardBrowser(browser, base, blocked, label, submissions) {
   const orig = browser.newContext.bind(browser);
   browser.newContext = async opts => {
     const ctx = await orig(opts);
     await guardContext(ctx, base, blocked, label);
-    await fakeFormSubmit(ctx, submissions || []);
+    const subs = submissions || [];
+    await fakeFormSubmit(ctx, subs);
+    await fakeAppsScript(ctx, subs);
     return ctx;
   };
   return browser;
 }
-module.exports = { guardContext, guardBrowser, fakeFormSubmit };
+module.exports = { guardContext, guardBrowser, fakeFormSubmit, fakeAppsScript };

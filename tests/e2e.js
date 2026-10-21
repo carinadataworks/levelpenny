@@ -12,6 +12,7 @@ const { chromium } = require('playwright-core');
 const { start } = require('./serve.js');
 const { guardBrowser } = require('./netguard.js');
 const P = require('../js/plans.js');
+const CFG = require('../js/config.js');
 const C = require('../js/calc.js');
 
 const ROOT = path.resolve(__dirname, '..');
@@ -469,14 +470,15 @@ const FENCE = {
     await axe(page, 'plans');
   });
 
-  await step('Founding-list signup (live FormSubmit endpoint, intercepted: never leaves the box): validates, POSTs, confirms', async () => {
-    const FS = 'https://formsubmit.co/ajax/levelpennyapp@gmail.com';
+  await step('Founding-list signup (live Google Apps Script URL, intercepted: never leaves the box): validates, POSTs, confirms', async () => {
+    const SCRIPT = CFG.SIGNUP_SCRIPT_URL;
+    check(/^https:\/\/script\.google\.com\/macros\/s\/[\w-]+\/exec$/.test(SCRIPT), 'config points at an Apps Script /exec URL');
     const n0 = submissions.length;
     const storeBefore = await page.evaluate(() => JSON.stringify(Object.keys(localStorage).sort()));
     await page.click('[data-plan-option="business-yearly"]');
     eq(await page.inputValue('#suPlan'), 'business-yearly', 'clicked option is preselected');
     eq(await page.evaluate(() => document.activeElement.id), 'suEmail', 'email focused');
-    check((await text(page, '#signupIdle')).includes('levelpennyapp@gmail.com'), 'says where signups go');
+    check((await text(page, '#signupIdle')).startsWith('Sent to levelpennyapp@gmail.com'), 'says where signups go (not FormSubmit)');
     await page.click('#signupSubmit');
     check(await page.isVisible('#suEmailErr'), 'empty email flagged');
     await page.fill('#suEmail', 'not-an-email'); await page.click('#signupSubmit');
@@ -489,21 +491,20 @@ const FENCE = {
     check(await page.isHidden('#suEmailErr'), 'error cleared');
     eq(submissions.length, n0 + 1, 'exactly one (intercepted) submission');
     const sub = submissions[n0];
-    eq(sub.url, FS, 'FormSubmit AJAX endpoint'); eq(sub.method, 'POST', 'POST');
-    check(/application\/json/.test(sub.headers['content-type']) && /application\/json/.test(sub.headers.accept), 'JSON in, JSON out (AJAX)');
-    const want = { email: 'dana@ridgeline.example', _replyto: 'dana@ridgeline.example', _subject: 'LevelPenny founding-list signup', _honey: '', _captcha: 'false', _template: 'table',
-      Plan: 'Business yearly', Price: '$169/yr', Offer: '40% off for life (founding member)', App: 'LevelPenny', Note: '3-person deck crew' };
-    eq(JSON.stringify(sub.body), JSON.stringify(want), 'FormSubmit payload');
+    eq(sub.url, SCRIPT, 'Apps Script /exec URL'); eq(sub.method, 'POST', 'POST');
+    check(/application\/x-www-form-urlencoded/.test(sub.headers['content-type']), 'form-encoded body');
+    const want = { form: 'signup', email: 'dana@ridgeline.example', Plan: 'Business yearly', Price: '$169/yr', Offer: '40% off for life (founding member)', App: 'LevelPenny', Note: '3-person deck crew', website: '' };
+    eq(JSON.stringify(sub.body), JSON.stringify(want), 'Apps Script payload');
     eq(await page.evaluate(() => JSON.stringify(Object.keys(localStorage).sort())), storeBefore, 'no new storage keys');
     check(!(await page.evaluate(() => JSON.stringify(localStorage))).includes('dana@ridgeline'), 'email not stored locally');
     await page.$eval('#signup', e => e.scrollIntoView({ block: 'center' }));
     await shot(page, 'desktop-chrome-signup.png');
-    // FormSubmit sometimes answers 200 {success:"false"}: show an error, keep what was typed
-    await page.route(FS, r => r.fulfill({ status: 200, contentType: 'application/json', headers: { 'Access-Control-Allow-Origin': '*' }, body: '{"success":"false","message":"x"}' }));
+    // network error (fetch rejects; simulated in-page so it doesn't count as a failed request): show an error, keep what was typed
+    await page.evaluate(() => { window.__realFetch = window.fetch; window.fetch = () => Promise.reject(new TypeError('Failed to fetch')); });
     await page.fill('#suEmail', 'lee@example.com'); await page.click('#signupSubmit');
     await page.waitForFunction(() => document.querySelector('#signupMsg').classList.contains('bad'));
     eq(await page.inputValue('#suEmail'), 'lee@example.com', 'input kept after a failed send');
-    await page.unroute(FS);
+    await page.evaluate(() => { window.fetch = window.__realFetch; });
     // honeypot filled = bot: nothing sent
     const n1 = submissions.length;
     await page.$eval('#suWebsite', e => { e.value = 'spam'; }); await page.click('#signupSubmit'); await page.waitForTimeout(300);
@@ -512,11 +513,40 @@ const FENCE = {
     await page.click('.billing-seg label:has(input[value="monthly"])');
   });
 
-  await step('Signup with SIGNUP_ENDPOINT emptied: "Signups open soon", sends and stores nothing', async () => {
+  await step('Fallback: SIGNUP_SCRIPT_URL emptied → FormSubmit AJAX endpoint (intercepted): POSTs JSON, handles {success:"false"}', async () => {
+    const FS = 'https://formsubmit.co/ajax/levelpennyapp@gmail.com';
+    const cf = await browser.newContext({ viewport: { width: 1440, height: 900 } });
+    await cf.addInitScript(INIT);
+    await cf.route('**/js/config.js', route => route.fulfill({ contentType: 'text/javascript',
+      body: fs.readFileSync(path.join(ROOT, 'js/config.js'), 'utf8').replace(/SIGNUP_SCRIPT_URL: '[^']*'/, "SIGNUP_SCRIPT_URL: ''") }));
+    const pf = await cf.newPage(); watch(pf, 'signup-formsubmit');
+    await pf.goto(BASE); await pf.check('#agreeTerms'); await pf.click('#tourSkip'); await pf.click('[data-view-link="plans"]');
+    check((await text(pf, '#signupIdle')).startsWith('Sent by FormSubmit to levelpennyapp@gmail.com'), 'fallback idle note names FormSubmit');
+    const n0 = submissions.length;
+    await pf.selectOption('#suPlan', 'business-yearly');
+    await pf.fill('#suEmail', 'dana@ridgeline.example'); await pf.fill('#suNote', '3-person deck crew');
+    await pf.click('#signupSubmit');
+    await pf.waitForFunction(() => document.querySelector('#signupMsg').classList.contains('ok'));
+    eq(submissions.length, n0 + 1, 'exactly one (intercepted) submission');
+    const sub = submissions[n0];
+    eq(sub.url, FS, 'FormSubmit AJAX endpoint'); eq(sub.method, 'POST', 'POST');
+    check(/application\/json/.test(sub.headers['content-type']) && /application\/json/.test(sub.headers.accept), 'JSON in, JSON out (AJAX)');
+    const want = { email: 'dana@ridgeline.example', _replyto: 'dana@ridgeline.example', _subject: 'LevelPenny founding-list signup', _honey: '', _captcha: 'false', _template: 'table',
+      Plan: 'Business yearly', Price: '$169/yr', Offer: '40% off for life (founding member)', App: 'LevelPenny', Note: '3-person deck crew' };
+    eq(JSON.stringify(sub.body), JSON.stringify(want), 'FormSubmit payload');
+    // FormSubmit sometimes answers 200 {success:"false"}: show an error, keep what was typed
+    await pf.route(FS, r => r.fulfill({ status: 200, contentType: 'application/json', headers: { 'Access-Control-Allow-Origin': '*' }, body: '{"success":"false","message":"x"}' }));
+    await pf.fill('#suEmail', 'lee@example.com'); await pf.click('#signupSubmit');
+    await pf.waitForFunction(() => document.querySelector('#signupMsg').classList.contains('bad'));
+    eq(await pf.inputValue('#suEmail'), 'lee@example.com', 'input kept after a failed send');
+    await cf.close();
+  });
+
+  await step('Signup with SIGNUP_SCRIPT_URL and SIGNUP_ENDPOINT emptied: "Signups open soon", sends and stores nothing', async () => {
     const c5 = await browser.newContext({ viewport: { width: 1440, height: 900 } });
     await c5.addInitScript(INIT);
     await c5.route('**/js/config.js', route => route.fulfill({ contentType: 'text/javascript',
-      body: fs.readFileSync(path.join(ROOT, 'js/config.js'), 'utf8').replace(/SIGNUP_ENDPOINT: '[^']*'/, "SIGNUP_ENDPOINT: ''") }));
+      body: fs.readFileSync(path.join(ROOT, 'js/config.js'), 'utf8').replace(/SIGNUP_ENDPOINT: '[^']*'/, "SIGNUP_ENDPOINT: ''").replace(/SIGNUP_SCRIPT_URL: '[^']*'/, "SIGNUP_SCRIPT_URL: ''") }));
     const p5 = await c5.newPage(); watch(p5, 'signup-closed');
     const reqs = []; p5.on('request', r => { if (!r.url().startsWith(BASE)) reqs.push(r.url()); });
     const n0 = submissions.length;

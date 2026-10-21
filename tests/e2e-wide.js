@@ -42,7 +42,7 @@ const go = async (p, v) => { await p.click(`[data-view-link="${v}"]`); await p.w
   console.log(`Wide-screen + WebKit e2e against ${BASE}\n`);
 
   for (const bn of ['chromium', 'webkit']) {
-    const browser = guardBrowser(await pw[bn].launch(), BASE, blockedNet, bn, submissions); // FormSubmit answered locally // all non-local network is aborted
+    const browser = guardBrowser(await pw[bn].launch(), BASE, blockedNet, bn, submissions); // Apps Script + FormSubmit answered locally // all non-local network is aborted
     for (const [w, h] of SIZES) {
       const tag = `${w}x${h}`;
       await step(`${bn} ${tag}: inputs and results side by side, nothing cut off or sideways-scrolling`, async () => {
@@ -165,7 +165,7 @@ const go = async (p, v) => { await p.click(`[data-view-link="${v}"]`); await p.w
         await p.fill('#suEmail', 'sam@example.com'); await p.tap('#signupSubmit');
         await p.waitForFunction(() => document.querySelector('#signupMsg').classList.contains('ok'));
         check((await p.textContent('#signupMsg')).includes('Pro yearly ($79/yr)'), 'confirmation on iPhone');
-        check(submissions.length === 1 && submissions[0].body.Plan === 'Pro yearly', 'one intercepted FormSubmit POST');
+        check(submissions.length === 1 && submissions[0].body.Plan === 'Pro yearly' && /script\.google\.com\/macros\//.test(submissions[0].url), 'one intercepted Apps Script POST');
         check(await overflowX(p) <= 0, 'plans overflow after signup');
         await ctx.close();
       });

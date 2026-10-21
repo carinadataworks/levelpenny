@@ -106,28 +106,29 @@ Saved jobs shows "N of 3 free saved jobs used".
 (or `business`) to lift the saved-jobs cap in that browser; `?dev-unlock=off` or the *Turn off dev unlock* button on
 Plans removes it. It's a localStorage flag (`jpc.devplan.v1`), not a subscription, and is ignored on any hosted copy.
 
-**Founding-list signup destination.** One value: `js/config.js` → `APP_CONFIG.SIGNUP_ENDPOINT` =
-`https://formsubmit.co/ajax/levelpennyapp@gmail.com` (LevelPenny's own inbox; same FormSubmit AJAX pattern as
-SkuClinic). The form POSTs JSON (`Accept: application/json`) with `email`, `_replyto`, `_subject` ("LevelPenny
-founding-list signup"), `_honey`, `_captcha: "false"`, `_template: "table"`, `Plan`, `Price`, `Offer`, `App` and
-`Note` (if typed); a filled honeypot field sends nothing; `{success:"false"}` shows an error and keeps the input.
-Nothing is stored on the device. **FormSubmit needs a one-time activation:** the first real submission from the
-public site emails levelpennyapp@gmail.com a confirmation link that must be clicked before signups are delivered.
-Set the value to `''` to close signups: the form then shows *"Signups open soon"* and sends/stores nothing.
+**Founding-list signup destination: Google Apps Script (live).** `js/config.js` → `APP_CONFIG.SIGNUP_SCRIPT_URL` is
+the `/exec` URL of an Apps Script web app deployed from levelpennyapp@gmail.com (script and deploy steps:
+`signup-backend/Code.gs` and `README.md`, kept outside this repo, with `APP_NAME = 'LevelPenny'`). The form POSTs with
+`mode: 'no-cors'` and a form-encoded body (`URLSearchParams`): `form=signup`, `email`, `Plan`, `Price`, `Offer`, `App`,
+`Note` (if typed) and an empty `website` honeypot. The script appends a row to the private "LevelPenny signups" Sheet
+and emails levelpennyapp@gmail.com from itself (lands in the inbox; FormSubmit mail was flagged as spam). The response
+is opaque, so a completed request counts as sent and a network error shows the error and keeps the input. A filled
+honeypot field sends nothing. Nothing is stored on the device. The pages set no Content-Security-Policy; if one is
+added, `connect-src` must allow `https://script.google.com` and `https://script.googleusercontent.com` (Apps Script
+redirects there).
+
+**Fallback: FormSubmit (`APP_CONFIG.SIGNUP_ENDPOINT`).** Used only when `SIGNUP_SCRIPT_URL` is `''`:
+`https://formsubmit.co/ajax/levelpennyapp@gmail.com`, JSON (`Accept: application/json`) with `email`, `_replyto`,
+`_subject` ("LevelPenny founding-list signup"), `_honey`, `_captcha: "false"`, `_template: "table"`, `Plan`, `Price`,
+`Offer`, `App` and `Note`; `{success:"false"}` shows an error and keeps the input. FormSubmit needs a one-time
+activation (a confirmation link emailed to the inbox). If you switch back, restore the FormSubmit wording in
+`privacy.html` and `terms.html`. Set **both** values to `''` to close signups: the form then shows *"Signups open
+soon"* and sends/stores nothing.
 Contact email (terms, privacy, field guide): `APP_CONFIG.contactEmail` = levelpennyapp@gmail.com.
 
-**Google Apps Script instead of FormSubmit (`APP_CONFIG.SIGNUP_SCRIPT_URL`, empty for now).** Gmail flags FormSubmit
-mail as spam, so the replacement is an Apps Script web app deployed from levelpennyapp@gmail.com (script and deploy
-steps: `signup-backend/Code.gs` and `README.md`, kept outside this repo, with `APP_NAME = 'LevelPenny'`). Paste its `/exec` URL into
-`js/config.js` → `SIGNUP_SCRIPT_URL`; it then wins over `SIGNUP_ENDPOINT`. The form POSTs with `mode: 'no-cors'` and a
-form-encoded body (`URLSearchParams`): `form=signup`, `email`, `Plan`, `Price`, `Offer`, `App`, `Note` (if typed) and an
-empty `website` honeypot. The script appends a row to the "LevelPenny signups" Sheet and emails the inbox from itself.
-The response is opaque, so a completed request counts as sent and a network error shows the error and keeps the input.
-`tests/e2e-script-signup.js` checks this path against a local mock. When you switch, update the FormSubmit wording in
-`privacy.html` and `terms.html`.
-
 **Tests never touch the network.** `tests/netguard.js` aborts every browser request that isn't the local test
-server and answers `formsubmit.co` locally (logged, asserted); any attempted internet request fails the run.
+server and answers the Apps Script URL (`script.google.com/macros/`) and `formsubmit.co` locally (logged, asserted);
+any attempted internet request fails the run.
 
 ## Formulas
 

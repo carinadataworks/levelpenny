@@ -63,7 +63,7 @@ test('signup: validates email, plan and note; every plan option accepted; unknow
   assert.ok(P.signupPayload({ email: 'a@b.co', plan: 'pro-monthly', note: 'x'.repeat(501) }).errors.note);
 });
 
-test('signup goes to LevelPenny\'s own FormSubmit inbox (never another product\'s); FormSubmit AJAX body', () => {
+test('fallback signup goes to LevelPenny\'s own FormSubmit inbox (never another product\'s); FormSubmit AJAX body', () => {
   assert.strictEqual(CFG.SIGNUP_ENDPOINT, 'https://formsubmit.co/ajax/levelpennyapp@gmail.com');
   assert.strictEqual(CFG.contactEmail, 'levelpennyapp@gmail.com');
   assert.strictEqual(P.hasEndpoint(CFG.SIGNUP_ENDPOINT), true);
@@ -81,9 +81,14 @@ test('signup goes to LevelPenny\'s own FormSubmit inbox (never another product\'
   for (const f of ['terms.html', 'privacy.html', 'guide.html']) assert.ok(read(f).includes('levelpennyapp@gmail.com'), f + ' shows the contact email');
 });
 
-test('SIGNUP_SCRIPT_URL (Google Apps Script) is present and empty for now; script body = plain fields + form + empty honeypot', () => {
+test('SIGNUP_SCRIPT_URL is LevelPenny\'s deployed Google Apps Script /exec URL (live); script body = plain fields + form + empty honeypot', () => {
   assert.ok(Object.prototype.hasOwnProperty.call(CFG, 'SIGNUP_SCRIPT_URL'));
-  assert.strictEqual(CFG.SIGNUP_SCRIPT_URL, '', 'empty = FormSubmit (SIGNUP_ENDPOINT) stays in use');
+  assert.strictEqual(CFG.SIGNUP_SCRIPT_URL, 'https://script.google.com/macros/s/AKfycbwvUUlnjZXPZZvl1VRDrjn2iprJ5-0X0YezuSq_bqbaPcrkRLgqzABeg0lIwDgmx4uhIQ/exec', 'live Apps Script deployment');
+  assert.strictEqual(P.hasEndpoint(CFG.SIGNUP_SCRIPT_URL), true, 'script path wins over SIGNUP_ENDPOINT');
+  for (const f of ['terms.html', 'privacy.html']) {
+    assert.ok(!/formsubmit/i.test(read(f)), f + ' no longer says signups go through FormSubmit');
+    assert.ok(/Google Apps Script/.test(read(f)) && /Google Sheet/.test(read(f)), f + ' says signups go through Google Apps Script into a Google Sheet');
+  }
   assert.strictEqual(P.hasEndpoint('https://script.google.com/macros/s/X/exec'), true);
   const r = P.signupPayload({ email: 'a@b.co', plan: 'pro-yearly', note: 'hi' }, 'LevelPenny');
   assert.deepStrictEqual(P.scriptBody(r.payload), { form: 'signup', email: 'a@b.co', Plan: 'Pro yearly', Price: '$79/yr', Offer: '40% off for life (founding member)', App: 'LevelPenny', Note: 'hi', website: '' });

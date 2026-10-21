@@ -25,7 +25,7 @@ const all = []; let states = 0;
   const BASE = `http://127.0.0.1:${server.address().port}/`;
   console.log(`Spacing check against ${BASE}\n`);
   for (const bn of BROWSERS) {
-    const browser = guardBrowser(await pw[bn].launch(), BASE, blockedNet, bn, submissions); // FormSubmit answered locally // all non-local network is aborted
+    const browser = guardBrowser(await pw[bn].launch(), BASE, blockedNet, bn, submissions); // Apps Script + FormSubmit answered locally // all non-local network is aborted
     for (const [w, h] of SIZES) {
       const tag = `${bn}-${w}x${h}`;
       const phone = w < 600;
