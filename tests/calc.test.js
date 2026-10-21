@@ -421,7 +421,7 @@ test('Store: round trip, corrupted data falls back safely, blocked storage is su
 });
 test('Backup: makeBackup → parseBackup round trip with summary', () => {
   const data = { profile: profile(), jobs: [{ id: 'j1', name: 'Deck' }, { id: 'j2' }], docs: [{ id: 'd1', type: 'estimate', lines: [] }, { id: 'd2', type: 'invoice', lines: [] }, { id: 'd3', type: 'invoice', lines: [] }], draft: deck() };
-  const text = JSON.stringify(ST.makeBackup(data, 'Job Profit Calculator', new Date('2026-10-21T14:00:00Z')));
+  const text = JSON.stringify(ST.makeBackup(data, 'LevelPenny', new Date('2026-10-21T14:00:00Z')));
   const res = ST.parseBackup(text);
   assert.equal(res.ok, true);
   assert.deepEqual(res.summary, { jobs: 2, estimates: 1, invoices: 2, exportedAt: '2026-10-21T14:00:00.000Z' });
@@ -440,8 +440,8 @@ test('Backup: rejects invalid files with a plain-English reason', () => {
 
 // ---------------- CSV ----------------
 test('CSV: job export has line items and hand-checked results', () => {
-  const j = deck(), csv = CSV.jobToCsv(j, C.calculate(j), 'Job Profit Calculator');
-  assert.match(csv, /^Job Profit Calculator,Job export/);
+  const j = deck(), csv = CSV.jobToCsv(j, C.calculate(j), 'LevelPenny');
+  assert.match(csv, /^LevelPenny,Job export/);
   assert.match(csv, /Materials,"Pressure-treated 5\/4×6 decking, 12 ft",40,14\.98,599\.20/);
   assert.match(csv, /Labor,Lead carpenter,16,32\.00,512\.00/);
   assert.match(csv, /Net profit,1393\.78/);
@@ -463,7 +463,7 @@ test('CSV: blank worksheet is named from config and lists every field', () => {
   for (const f of ['Price you charge', 'Material line 1', 'Crew member 1', 'Your hours', 'Miles driven', 'Fee percent', 'Permit', 'Subcontractor', 'Overhead', 'tax set-aside', 'Profit per hour']) assert.ok(w.includes(f), f);
 });
 test('Config: one place for the product name', () => {
-  assert.equal(CFG.name, 'Job Profit Calculator');
+  assert.equal(CFG.name, 'LevelPenny');
   assert.equal(CFG.company, 'Carina Dataworks');
 });
 

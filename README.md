@@ -1,6 +1,6 @@
-# Job Profit Calculator — by Carina Dataworks
+# LevelPenny — by Carina Dataworks
 
-> Working title. The product name lives in **one place**: `js/config.js` → `APP_CONFIG.name`.
+> **LevelPenny, a Carina Dataworks product** (named Oct 21, 2026; plain wordmark, no logo art). The product name lives in **one place**: `js/config.js` → `APP_CONFIG.name`.
 > Every page title, header, footer, job sheet, CSV export, worksheet and the guide/legal pages read it from there.
 
 A job and quote profit calculator for contractors, freelancers and small service businesses —
@@ -70,10 +70,54 @@ credibility line in the hero; disclaimer near results and on the job sheet; `ter
 (Carina Dataworks, last updated date, Connecticut law, liability cap, indemnification, no-profit guarantee,
 attorney-review note); subtle Terms/Privacy links in the app footer only (never on customer documents).
 
-**Plans** — placeholder describing a future "Contractor Pro" subscription. No payments anywhere.
+**Plans & founding list** — real plan cards with a Monthly / Yearly toggle, all rendered from `js/plans.js`
+(see "Plans and pricing" below). Each paid option has a *Join founding list* button that opens the signup form
+(email + plan + optional note). **Planned pricing, not billed yet — no payments anywhere.**
 
 **Accessibility & mobile** — every control labelled, keyboard-operable tabs and menu, visible focus, 44px tap targets,
 AA contrast (axe-core clean of serious/critical issues), sticky mobile results bar, no horizontal scrolling at 390px.
+
+## Plans and pricing (planned, not billed yet)
+
+All prices, plan names, the Free limit, the founding offer and each plan's feature list live in **one file:
+`js/plans.js`**. The Plans page, the upgrade prompt and the signup form render from it; `terms.html` and
+`guide.html` fill `[data-price]` / `[data-plan-text]` spans from it; `tests/pricing.test.js` fails if the approved
+price set changes, an old placeholder comes back, any page or this README shows a price not in that file, or a plan
+lists a feature the app doesn't have.
+
+| Plan | Price | Includes (all built today) |
+|---|---|---|
+| Free | $0 | Full calculator incl. Find my price; up to 3 saved jobs; templates, field guide, worksheet |
+| Pro | $9/mo or $79/yr | Everything in Free; unlimited saved jobs; branded estimates & invoices (logo, numbering, tax, deposit, balance, signature); internal job sheet; backup/restore and CSV export |
+| Business | $19/mo or $169/yr | Everything in Pro; crew labor rates with labor burden; profile defaults; overhead; compare saved jobs by profit/hr, net, margin; CSV of all jobs for the bookkeeper |
+
+*Founding members: 40% off for life on Pro and Business while the subscription stays active. First 200 paid accounts.*
+
+**Not built, so not part of any plan (don't promise):** cloud sync, online payments / emailing / e-signature,
+multiple tax rates or tax templates, team seats, a Business trial. While pricing is being tested, everything that is
+built works on Free except the saved-jobs limit (no other paywalls, so no current flow breaks).
+
+**Free limit (3 saved jobs).** Saving a 4th *new* job, duplicating, or "Save a copy as my template" shows an upgrade
+prompt instead; the job stays in the calculator (autosaved draft). Updating an already-saved job always works.
+Over the limit already (e.g. a restored backup)? Nothing is deleted; those jobs can be opened, edited and deleted.
+Saved jobs shows "N of 3 free saved jobs used".
+
+**Dev unlock (testing only).** On `localhost`, `127.0.0.1` or `file://` only: open `index.html?dev-unlock=pro`
+(or `business`) to lift the saved-jobs cap in that browser; `?dev-unlock=off` or the *Turn off dev unlock* button on
+Plans removes it. It's a localStorage flag (`jpc.devplan.v1`), not a subscription, and is ignored on any hosted copy.
+
+**Founding-list signup destination.** One value: `js/config.js` → `APP_CONFIG.SIGNUP_ENDPOINT` =
+`https://formsubmit.co/ajax/levelpennyapp@gmail.com` (LevelPenny's own inbox; same FormSubmit AJAX pattern as
+SkuClinic). The form POSTs JSON (`Accept: application/json`) with `email`, `_replyto`, `_subject` ("LevelPenny
+founding-list signup"), `_honey`, `_captcha: "false"`, `_template: "table"`, `Plan`, `Price`, `Offer`, `App` and
+`Note` (if typed); a filled honeypot field sends nothing; `{success:"false"}` shows an error and keeps the input.
+Nothing is stored on the device. **FormSubmit needs a one-time activation:** the first real submission from the
+public site emails levelpennyapp@gmail.com a confirmation link that must be clicked before signups are delivered.
+Set the value to `''` to close signups: the form then shows *"Signups open soon"* and sends/stores nothing.
+Contact email (terms, privacy, field guide): `APP_CONFIG.contactEmail` = levelpennyapp@gmail.com.
+
+**Tests never touch the network.** `tests/netguard.js` aborts every browser request that isn't the local test
+server and answers `formsubmit.co` locally (logged, asserted); any attempted internet request fails the run.
 
 ## Formulas
 
@@ -109,7 +153,7 @@ Owner time is deliberately *not* a cost: the owner's pay is the profit, which is
 
 ```bash
 npm install          # dev deps: playwright-core, axe-core
-npm test             # 40 unit tests (node:test) — every calculation hand-checked
+npm test             # unit tests (node:test): calc.test.js (every calculation hand-checked) + pricing.test.js (price set guard)
 npm run test:e2e     # tests/e2e.js (Chromium flow) + tests/e2e-wide.js (wide screens + Safari) + tests/e2e-spacing.js
 ```
 
@@ -163,7 +207,8 @@ terms.html, privacy.html
 css/styles.css        app styles (navy + gold, mobile first)
 css/print.css         Letter print stylesheet
 css/page.css          guide / legal page styles
-js/config.js          product name & settings  ← rename here
+js/config.js          product name & settings  ← rename here; SIGNUP_ENDPOINT (empty)
+js/plans.js           plans, prices, Free limit, founding offer ← the ONE price source
 js/calc.js            calculation engine (pure, cents)
 js/docs.js            estimates, invoices, job sheet rendering (pure)
 js/store.js           localStorage + backup/restore (pure helpers)

@@ -3,10 +3,15 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Job Profit Calculator — by Carina Dataworks</title>
-<meta name="description" content="Job and quote profit calculator for contractors, freelancers and small service businesses. See your real profit per hour after materials, crew, travel, card fees and overhead.">
+<title>LevelPenny — by Carina Dataworks</title>
+<meta name="application-name" content="LevelPenny">
+<meta name="apple-mobile-web-app-title" content="LevelPenny">
+<meta property="og:site_name" content="LevelPenny">
+<meta property="og:title" content="LevelPenny — know your price, know your profit per hour">
+<meta name="description" content="LevelPenny by Carina Dataworks: a job and quote profit calculator for contractors, freelancers and small service businesses. See your real profit per hour after materials, crew, travel, card fees and overhead.">
 <meta name="theme-color" content="#0b1f3a">
 <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="assets/apple-touch-icon.png">
 <link rel="stylesheet" href="css/styles.css">
 <link rel="stylesheet" href="css/print.css" media="print">
 </head>
@@ -16,8 +21,8 @@
 <header class="topbar">
   <div class="topbar-inner">
     <a class="brand" href="#calculator">
-      <svg class="brand-mark" viewBox="0 0 32 32" aria-hidden="true"><rect width="32" height="32" rx="7" fill="#132c52"/><path d="M8 22V14M14 22V10M20 22V16M26 22V8" stroke="#e2b13c" stroke-width="3" stroke-linecap="round"/></svg>
-      <span><span class="brand-name" data-app-name>Job Profit Calculator</span><span class="brand-by">by <span data-company>Carina Dataworks</span></span></span>
+      <svg class="brand-mark" viewBox="0 0 32 32" aria-hidden="true"><rect width="32" height="32" rx="7" fill="#132c52"/><rect x="4" y="10" width="24" height="12" rx="6" fill="#1b3d6b" stroke="#e2b13c" stroke-width="2"/><path d="M10.2 11v2.4M21.8 11v2.4M10.2 18.6V21M21.8 18.6V21" stroke="#e2b13c" stroke-width="1.6" stroke-linecap="round"/><circle cx="16" cy="16" r="4.2" fill="#e2b13c"/><circle cx="16" cy="16" r="2.5" fill="none" stroke="#132c52" stroke-width="1"/></svg>
+      <span><span class="brand-name" data-app-name>LevelPenny</span><span class="brand-by">by <span data-company>Carina Dataworks</span></span></span>
     </a>
     <button class="btn btn-ghost-light tour-btn" type="button" id="tourBtn">How it works</button>
   </div>
@@ -76,6 +81,7 @@
       </div>
     </div>
   </div>
+  <div class="limit-box" id="limitCalc" role="alert" hidden></div>
 
   <div class="calc-grid" id="calcGrid" role="tabpanel" aria-labelledby="modeProfit">
     <form class="inputs" id="jobForm" autocomplete="off" novalidate onsubmit="return false">
@@ -276,6 +282,8 @@
       <button class="btn" type="button" id="exportAllCsv">Export all (CSV)</button>
     </div>
   </div>
+  <p class="usage" id="jobsUsage"></p>
+  <div class="limit-box" id="limitJobs" role="alert" hidden></div>
   <div id="jobsEmpty" class="empty card" hidden>
     <p><strong>No saved jobs yet.</strong> Fill in a job on the calculator and press <em>Save job</em>. Saved jobs stay on this device.</p>
     <a class="btn btn-primary" href="#calculator">Go to calculator</a>
@@ -449,25 +457,66 @@
 </section>
 
 <!-- ===================== PLANS ===================== -->
+<!-- Prices, plan names, features and the founding offer are rendered from js/plans.js (the one price source). -->
 <section class="view" data-view="plans" aria-labelledby="plansTitle" hidden>
-  <div class="view-head"><div><h1 id="plansTitle">Plans</h1><p class="hero-sub">The calculator is free to use. A contractor subscription is planned — here's what it's meant to include.</p></div></div>
-  <div class="plans">
-    <div class="card plan">
-      <h2>Free</h2><p class="plan-price">Available now</p>
-      <ul><li>Unlimited job calculations</li><li>Reverse pricing from a target margin or hourly</li><li>Saved jobs &amp; comparison on this device</li><li>Estimates, invoices &amp; job sheets (print / PDF)</li><li>CSV export, templates and field guide</li></ul>
+  <div class="view-head">
+    <div><h1 id="plansTitle">Plans</h1><p class="hero-sub" id="plansStatus" data-plan-text="status">Planned pricing, not billed yet. No payment details are collected anywhere in this app.</p></div>
+    <div class="view-actions">
+      <div class="seg billing-seg" role="radiogroup" aria-label="Billing period">
+        <label><input type="radio" name="billing" value="monthly" checked> Monthly</label>
+        <label><input type="radio" name="billing" value="yearly"> Yearly</label>
+      </div>
     </div>
-    <div class="card plan plan-pro">
-      <span class="badge">Planned</span>
-      <h2>Contractor Pro</h2><p class="plan-price">Coming later · pricing to be announced</p>
-      <ul><li>Sync jobs and documents across phone, tablet and desktop</li><li>Email estimates with online accept &amp; e-signature</li><li>Online invoice payments and automatic paid status</li><li>Job-type reports: which work pays best per hour</li><li>Team seats for office and crew leads</li><li>QuickBooks / spreadsheet export</li></ul>
-      <p class="hint">Nothing to buy today. No payment details are collected anywhere in this app.</p>
+  </div>
+  <p class="founding" id="foundingLine" data-plan-text="founding">Founding members: 40% off for life on Pro and Business while the subscription stays active. First 200 paid accounts.</p>
+  <p class="dev-unlock" id="devUnlockNote" hidden><span id="devUnlockText"></span> <button class="btn" type="button" id="devUnlockOff">Turn off dev unlock</button></p>
+  <div class="plans" id="planCards"></div>
+  <div class="plans-lower">
+    <div class="card plan-notes">
+      <h2>Good to know</h2>
+      <ul>
+        <li id="plansTesting"></li>
+        <li>Your jobs and documents stay on this device on every plan. Download a backup now and then.</li>
+        <li>Over the Free limit already (for example after a restore)? Nothing is deleted. You can open, edit and delete those jobs; you just can't add new ones.</li>
+      </ul>
+      <h3>Not built yet, so not part of any plan</h3>
+      <ul id="notBuiltList"></ul>
     </div>
+    <section class="card signup" id="signup" aria-labelledby="signupTitle">
+      <h2 id="signupTitle">Join the founding list</h2>
+      <p class="hint" id="signupFounding" data-plan-text="founding">Founding members: 40% off for life on Pro and Business while the subscription stays active. First 200 paid accounts.</p>
+      <form id="signupForm" novalidate>
+        <div class="signup-row">
+          <div class="field">
+            <label for="suEmail">Email</label>
+            <input id="suEmail" name="email" type="email" autocomplete="email" inputmode="email" maxlength="254" aria-describedby="suEmailErr">
+            <p class="err" id="suEmailErr" hidden></p>
+          </div>
+          <div class="field">
+            <label for="suPlan">Plan</label>
+            <select id="suPlan" name="plan" aria-describedby="suPlanErr"></select>
+            <p class="err" id="suPlanErr" hidden></p>
+          </div>
+        </div>
+        <div class="field">
+          <label for="suNote">Note <span class="opt">(optional)</span></label>
+          <textarea id="suNote" name="note" rows="3" maxlength="500" placeholder="Your trade, crew size, or what you'd need from Pro"></textarea>
+          <p class="err" id="suNoteErr" hidden></p>
+        </div>
+        <div class="hp" aria-hidden="true"><label for="suWebsite">Leave this empty</label><input id="suWebsite" name="website" type="text" tabindex="-1" autocomplete="off"></div>
+        <div class="signup-actions">
+          <button class="btn btn-primary" type="submit" id="signupSubmit">Join the list</button>
+        </div>
+        <p class="hint" id="signupIdle"></p>
+        <p class="signup-msg" id="signupMsg" role="status" aria-live="polite" hidden></p>
+      </form>
+    </section>
   </div>
 </section>
 </main>
 
 <footer class="site-foot">
-  <p><span data-app-name>Job Profit Calculator</span> <span class="dot" aria-hidden="true">·</span> by <span data-company>Carina Dataworks</span></p>
+  <p><span data-app-name>LevelPenny</span> <span class="dot" aria-hidden="true">·</span> by <span data-company>Carina Dataworks</span></p>
   <p class="small foot-data">Your jobs, estimates and invoices are stored on this device only. <button type="button" class="linklike" data-backup>Download a backup</button> · <a href="#profile" data-goto-data>Restore</a></p>
   <p class="muted small">Estimates only, based on the numbers you enter. Not financial or tax advice. <a class="foot-link" href="terms.html">Terms</a> · <a class="foot-link" href="privacy.html">Privacy</a></p>
 </footer>
@@ -495,6 +544,7 @@
 <div id="printRoot" class="print-root" aria-hidden="true"></div>
 
 <script src="js/config.js"></script>
+<script src="js/plans.js"></script>
 <script src="js/vendor/qrcode.js"></script>
 <script src="js/calc.js"></script>
 <script src="js/docs.js"></script>

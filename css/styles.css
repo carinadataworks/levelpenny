@@ -1,4 +1,4 @@
-/* Job Profit Calculator — Carina Dataworks. Navy + gold, mobile first. */
+/* LevelPenny — Carina Dataworks. Navy + gold, mobile first. */
 :root {
   --navy-950: #071528; --navy-900: #0b1f3a; --navy-800: #132c52; --navy-700: #1d3b69; --navy-100: #e6ecf5; --navy-50: #f3f6fb;
   --gold: #e2b13c; --gold-600: #c7951f; --gold-700: #8a6510; --gold-50: #fdf6e3;
@@ -305,14 +305,6 @@ details.rebuild { background: var(--navy-50); border-radius: var(--radius-sm); p
 .logo-preview img { max-width: 100%; max-height: 100%; object-fit: contain; }
 .logo-row .field { flex: 1; min-width: 220px; }
 
-.plans { display: grid; gap: 14px; }
-.plan { padding: 20px; position: relative; }
-.plan h2 { color: var(--navy-900); }
-.plan-price { color: var(--ink-3); font-weight: 600; margin: 4px 0 10px; }
-.plan ul { margin: 0; padding-left: 20px; }
-.plan li { margin: 6px 0; }
-.plan-pro { border: 2px solid var(--gold); }
-.badge { position: absolute; top: 16px; right: 16px; background: var(--gold); color: var(--navy-950); font-weight: 800; font-size: .74rem; padding: 3px 10px; border-radius: 99px; }
 
 .site-foot { text-align: center; padding: 24px 16px 110px; color: var(--ink-2); border-top: 1px solid var(--line-2); background: #fff; }
 .site-foot p { margin: 4px 0; }
@@ -437,7 +429,6 @@ details.rebuild { background: var(--navy-50); border-radius: var(--radius-sm); p
   .compare td.actions .btn { margin-left: 4px; }
   .doc-workspace { grid-template-columns: minmax(0, 1fr); }
   .tpl-grid { grid-template-columns: repeat(3, 1fr); }
-  .plans { grid-template-columns: 1fr 1fr; }
   .tour { left: auto; right: 24px; bottom: 24px; margin: 0; }
 }
 @media (min-width: 1200px) {
@@ -509,7 +500,6 @@ main { width: 100%; flex: 1 0 auto; }
   .tpl-grid { grid-template-columns: repeat(3, 1fr); }
   .profile-form { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); column-gap: 32px; align-items: start; }
   .profile-form .pf-b .row4 { grid-template-columns: 1fr 1fr; }
-  .plans { grid-template-columns: 1fr 1.25fr; }
 }
 
 /* Short wide screens (720–900px tall): tighten vertical rhythm so results stay in view */
@@ -667,3 +657,61 @@ details.math { margin-top: var(--sp-3); }
 @container paper (max-width: 600px) { .doc-bottom { gap: var(--sp-3); } }
 .lines .line.crew { align-items: start; }
 .lines .line.crew .icon-btn { align-self: end; }
+
+/* =====================================================================
+   Plans, founding-list signup and the Free saved-jobs limit.
+   Prices come from js/plans.js. Boxes keep >= --sp-3 apart; small controls >= --sp-2.
+   ===================================================================== */
+.billing-seg { margin: 0; }
+.founding { margin: 0 0 var(--sp-4); padding: 10px 14px; border: 1px solid #efd58e; border-left: 5px solid var(--gold); border-radius: var(--radius-sm); background: var(--gold-50); color: var(--navy-900); font-weight: 600; }
+.dev-unlock { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-2) var(--sp-3); margin: 0 0 var(--sp-4); padding: 8px 12px; border: 1px dashed var(--line); border-radius: var(--radius-sm); background: #fff; color: var(--ink-2); font-size: .9rem; }
+.plans { display: grid; gap: var(--sp-4); margin-bottom: var(--sp-4); }
+.plan { padding: 20px; display: flex; flex-direction: column; min-width: 0; }
+.plan-head { display: flex; align-items: center; justify-content: space-between; gap: var(--sp-2); }
+.plan h2 { color: var(--navy-900); margin: 0; }
+.plan-price { margin: 10px 0 0; color: var(--navy-900); line-height: 1.1; }
+.plan-price .amt { font-size: 2.1rem; font-weight: 800; letter-spacing: -.01em; }
+.plan-price .per { font-size: 1rem; font-weight: 700; color: var(--ink-3); margin-left: 2px; }
+.plan-sub { margin: 4px 0 0; color: var(--ink-3); font-size: .88rem; min-height: 1.3em; }
+.plan-blurb { margin: 10px 0 8px; color: var(--ink-2); font-weight: 600; }
+.plan ul { margin: 0; padding-left: 20px; }
+.plan li { margin: 6px 0; }
+.plan-pro { border: 2px solid var(--gold); }
+.plan-cta { margin-top: auto; padding-top: var(--sp-4); }
+.plan-cta .btn { width: 100%; white-space: normal; }
+.plans-lower { display: grid; gap: var(--sp-4); align-items: start; }
+.plan-notes, .signup { padding: 20px; min-width: 0; }
+.plan-notes h2, .signup h2 { color: var(--navy-900); margin: 0 0 8px; font-size: 1.15rem; }
+.plan-notes h3 { margin: 14px 0 6px; font-size: .95rem; color: var(--navy-900); }
+.plan-notes ul { margin: 0; padding-left: 20px; color: var(--ink-2); }
+.plan-notes li { margin: 5px 0; }
+.signup .hint:first-of-type { margin-bottom: 12px; }
+.signup-row { display: grid; gap: 0 var(--sp-3); }
+.hp { position: absolute; left: -10000px; width: 1px; height: 1px; overflow: hidden; }
+.signup-actions { display: flex; flex-wrap: wrap; gap: var(--sp-2); margin: 4px 0 var(--sp-2); }
+.signup-msg { margin: var(--sp-3) 0 0; padding: 10px 12px; border-radius: var(--radius-sm); background: var(--navy-50); color: var(--navy-900); font-weight: 600; }
+.signup-msg.soon { background: var(--gold-50); border: 1px solid #efd58e; }
+.signup-msg.ok { background: var(--green-bg); color: var(--green); }
+.signup-msg.bad { background: var(--red-bg); color: var(--red); }
+.limit-box { margin: 0 0 14px; padding: 12px 14px; border: 1px solid #efd58e; border-left: 5px solid var(--gold); border-radius: var(--radius-sm); background: var(--warn-bg); color: #4a3300; }
+.limit-box p { margin: 0 0 10px; }
+.limit-actions { display: flex; flex-wrap: wrap; gap: var(--sp-2); }
+.usage { margin: 0 0 var(--sp-3); color: var(--ink-2); font-size: .9rem; }
+@media (min-width: 560px) {
+  .signup-row { grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr); }
+  .signup-actions .btn { min-width: 220px; }
+}
+@media (max-width: 559px) {
+  .signup-actions .btn, .limit-actions .btn { flex: 1 1 100%; }
+  .view-head .billing-seg { align-self: flex-start; }
+}
+@media (min-width: 900px) {
+  .plans { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .plans-lower { grid-template-columns: minmax(0, 1fr) minmax(0, 1.25fr); }
+}
+/* Warning list (blank / new job): keep each warning box --sp-3 from its neighbours */
+.warnings { display: grid; gap: var(--sp-3); margin: var(--sp-3) 0 var(--sp-3); }
+.warnings:empty { display: none; }
+.warnings li { margin: 0; }
+.limit-box { grid-column: 1 / -1; }
+section[data-view="plans"] .view-head > div:first-child { flex: 1 1 auto; }

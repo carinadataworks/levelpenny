@@ -8,6 +8,7 @@ const path = require('path');
 const fs = require('fs');
 const pw = require('playwright-core');
 const { start } = require('./serve.js');
+const { guardBrowser } = require('./netguard.js');
 
 const ROOT = path.resolve(__dirname, '..');
 const SHOTS = path.join(ROOT, 'screens');
@@ -17,7 +18,7 @@ const SHOT_SIZES = { chromium: ['1920x1080', '1366x768'], webkit: ['1440x900', '
 const VIEWS = ['calculator', 'jobs', 'documents', 'blueprints', 'profile', 'plans'];
 const INIT = () => { window.__printed = null; window.print = () => { window.__printed = document.body.getAttribute('data-print'); }; };
 
-const results = []; const problems = [];
+const results = []; const problems = []; const blockedNet = []; const submissions = [];
 function check(c, m) { if (!c) throw new Error('Assertion failed: ' + m); }
 async function step(name, fn) {
   try { await fn(); results.push({ name, ok: true }); console.log(`  ✓ ${name}`); }
@@ -41,7 +42,7 @@ const go = async (p, v) => { await p.click(`[data-view-link="${v}"]`); await p.w
   console.log(`Wide-screen + WebKit e2e against ${BASE}\n`);
 
   for (const bn of ['chromium', 'webkit']) {
-    const browser = await pw[bn].launch();
+    const browser = guardBrowser(await pw[bn].launch(), BASE, blockedNet, bn, submissions); // FormSubmit answered locally // all non-local network is aborted
     for (const [w, h] of SIZES) {
       const tag = `${w}x${h}`;
       await step(`${bn} ${tag}: inputs and results side by side, nothing cut off or sideways-scrolling`, async () => {
@@ -76,6 +77,12 @@ const go = async (p, v) => { await p.click(`[data-view-link="${v}"]`); await p.w
         await p.evaluate(() => window.scrollTo(0, 0)); await p.waitForTimeout(3700); // let the save toast fade
         if (share) await p.screenshot({ path: name('estimate') });
         for (const v of VIEWS) { await go(p, v); check(await overflowX(p) <= 0, `${v} horizontal overflow`); }
+        // Plans: three cards in one row, >= 12px apart, nothing cut off
+        await go(p, 'plans'); await p.evaluate(() => window.scrollTo(0, 0));
+        const pl = await p.$$eval('#planCards .plan', a => { const r = a.map(e => e.getBoundingClientRect()); return { g1: r[1].left - r[0].right, g2: r[2].left - r[1].right, dy: Math.abs(r[0].top - r[2].top), w: Math.min(...r.map(x => x.width)) }; });
+        check(pl.g1 >= 12 && pl.g2 >= 12 && pl.dy < 1 && pl.w >= 280, 'plan cards in a row with gaps ' + JSON.stringify(pl));
+        const c4 = await clipped(p, 'section[data-view="plans"]'); check(c4.length === 0, 'plans clipped: ' + c4.join(', '));
+        if (bn === 'webkit' && tag === '1440x900') await p.screenshot({ path: path.join(SHOTS, 'webkit-1440x900-plans.png'), fullPage: true });
         await ctx.close();
       });
     }
@@ -146,14 +153,29 @@ const go = async (p, v) => { await p.click(`[data-view-link="${v}"]`); await p.w
           await p.waitForSelector(`section[data-view="${v}"]:not([hidden])`);
           check(await overflowX(p) <= 0, v + ' overflow');
         }
+        // Plans on iPhone: cards stack, billing toggle and founding signup work by touch
+        await p.evaluate(() => window.scrollTo(0, 0)); await p.waitForTimeout(3700);
+        const cp = await clipped(p, 'section[data-view="plans"]'); check(cp.length === 0, 'plans clipped: ' + cp.join(', '));
+        await p.screenshot({ path: path.join(SHOTS, 'webkit-iphone-plans.png') });
+        await p.screenshot({ path: path.join(SHOTS, 'webkit-iphone-plans-full.png'), fullPage: true });
+        await p.tap('.billing-seg label:has(input[value="yearly"])');
+        check((await p.textContent('[data-plan="pro"] .plan-price')).trim() === '$79/yr', 'yearly on iPhone');
+        await p.tap('[data-plan-option="pro-yearly"]');
+        check(await p.inputValue('#suPlan') === 'pro-yearly', 'plan preselected on iPhone');
+        await p.fill('#suEmail', 'sam@example.com'); await p.tap('#signupSubmit');
+        await p.waitForFunction(() => document.querySelector('#signupMsg').classList.contains('ok'));
+        check((await p.textContent('#signupMsg')).includes('Pro yearly ($79/yr)'), 'confirmation on iPhone');
+        check(submissions.length === 1 && submissions[0].body.Plan === 'Pro yearly', 'one intercepted FormSubmit POST');
+        check(await overflowX(p) <= 0, 'plans overflow after signup');
         await ctx.close();
       });
     }
     await browser.close();
   }
 
-  await step('No console errors, page errors or failed requests (both browsers)', async () => {
+  await step('No console errors, page errors, failed or internet requests (both browsers, all blocked)', async () => {
     check(problems.length === 0, problems.join('\n'));
+    check(blockedNet.length === 0, 'internet requests attempted (blocked):\n' + blockedNet.join('\n'));
   });
   server.close();
   const failed = results.filter(r => !r.ok);

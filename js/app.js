@@ -1,7 +1,7 @@
 /* App controller: DOM wiring, rendering, persistence. All math lives in calc.js / docs.js. */
 (function () {
   'use strict';
-  var CFG = window.APP_CONFIG, C = window.JobCalc, D = window.JobDocs, T = window.JobTemplates, ST = window.JobStore, CSV = window.JobCsv;
+  var CFG = window.APP_CONFIG, P = window.JobPlans, C = window.JobCalc, D = window.JobDocs, T = window.JobTemplates, ST = window.JobStore, CSV = window.JobCsv;
   var store = ST.create(window.localStorage, CFG.storagePrefix);
   var $ = function (sel, root) { return (root || document).querySelector(sel); };
   var $$ = function (sel, root) { return Array.prototype.slice.call((root || document).querySelectorAll(sel)); };
@@ -351,8 +351,42 @@
     else el.innerHTML = '<span class="pill pill-ok">Saved</span>';
   }
   function persistJobs() { if (!store.saveJobs(S.jobs)) toast('Could not save — this browser\u2019s storage is full or disabled.'); }
+  // ---------- plan (Free limit + local dev unlock) ----------
+  // No billing exists. Everyone is on Free; a dev unlock (local hosts / file:// only) lifts the
+  // saved-jobs cap in this browser for testing:  index.html?dev-unlock=pro | business | off
+  var DEV_KEY = CFG.storagePrefix + '.devplan.v1';
+  function devHost() { var h = location.hostname; return location.protocol === 'file:' || h === 'localhost' || h === '127.0.0.1' || h === '[::1]'; }
+  function devPlan() {
+    if (!devHost()) return null;
+    try { var v = JSON.parse(window.localStorage.getItem(DEV_KEY) || 'null'); return v && P.plan(v.plan) && v.plan !== 'free' ? v.plan : null; } catch (e) { return null; }
+  }
+  function currentPlan() { return devPlan() || 'free'; }
+  function applyDevUnlockParam() {
+    var m = /[?&]dev-unlock=([a-z]+)/.exec(location.search); if (!m || !devHost()) return;
+    try {
+      if (m[1] === 'off') window.localStorage.removeItem(DEV_KEY);
+      else if (m[1] === 'pro' || m[1] === 'business') window.localStorage.setItem(DEV_KEY, JSON.stringify({ plan: m[1], at: new Date().toISOString() }));
+    } catch (e) { /* storage blocked */ }
+    history.replaceState(null, '', location.pathname + location.hash);
+  }
+  function canSaveNew() { return P.canSaveNew(S.jobs.length, currentPlan()); }
+  function hideLimits() { $('#limitCalc').hidden = true; $('#limitJobs').hidden = true; }
+  function showLimit(where) {
+    var pro = P.plan('pro'), n = S.jobs.length;
+    var box = where === 'jobs' ? $('#limitJobs') : $('#limitCalc');
+    box.innerHTML = '<p><strong>The Free plan saves up to ' + P.FREE_SAVED_JOBS + ' jobs.</strong> You have ' + n + ' saved, so this one wasn\u2019t added' +
+      (where === 'jobs' ? '' : ' (it\u2019s still in the calculator and kept as your current job)') +
+      '. Delete a saved job to make room, or see Pro: unlimited saved jobs from ' + P.priceText(pro, 'monthly') + ' or ' + P.priceText(pro, 'yearly') + '. Planned pricing, not billed yet.</p>' +
+      '<div class="limit-actions"><button class="btn btn-primary" type="button" data-limit-act="plans">See Pro &amp; Business plans</button>' +
+      (where === 'jobs' ? '' : '<button class="btn" type="button" data-limit-act="jobs">Manage saved jobs</button>') +
+      '<button class="btn" type="button" data-limit-act="close">Not now</button></div>';
+    box.hidden = false;
+    if (where !== 'jobs') box.scrollIntoView({ block: 'nearest' });
+  }
   function saveJob() {
     var now = new Date().toISOString();
+    var existing = S.job.id && savedVersion(S.job.id);
+    if (!existing && !canSaveNew()) { showLimit('calc'); return false; }
     if (!S.job.name.trim()) { S.job.name = 'Untitled job ' + (S.jobs.length + 1); $('#jobName').value = S.job.name; }
     if (S.job.id && savedVersion(S.job.id)) {
       S.job.updatedAt = now;
@@ -361,20 +395,23 @@
       S.job.id = uid('j'); S.job.createdAt = now; S.job.updatedAt = now;
       S.jobs.push(clone(S.job));
     }
-    persistJobs(); recalc(); saveDraftNow(); renderJobs();
+    persistJobs(); recalc(); saveDraftNow(); renderJobs(); hideLimits();
     toast('Saved “' + S.job.name + '”');
+    return true;
   }
   function loadJob(j, msg) {
     S.job = normalizeJob(j); fillJobForm(); syncTargetUi(); recalc();
     if (msg) toast(msg);
   }
-  function duplicateJob(src) {
+  function duplicateJob(src, where) {
+    if (!canSaveNew()) { showLimit(where || 'calc'); return false; }
     var copy = normalizeJob(clone(src || S.job));
     var now = new Date().toISOString();
     copy.id = uid('j'); copy.name = (copy.name || 'Untitled job') + ' (copy)'; copy.createdAt = now; copy.updatedAt = now;
     S.jobs.push(clone(copy)); persistJobs();
     loadJob(copy); renderJobs();
     toast('Saved a copy: “' + copy.name + '”. Edit it as a new job.');
+    return true;
   }
   function newJob() {
     var prev = clone(S.job);
@@ -392,6 +429,8 @@
     var best = null;
     list.forEach(function (x) { var v = x.result.profitPerHourCents; if (v !== null && (best === null || v > best)) best = v; });
     $('#jobsEmpty').hidden = list.length > 0; $('#jobsTableWrap').hidden = list.length === 0;
+    $('#jobsUsage').innerHTML = esc(P.usageText(list.length, currentPlan())) + (currentPlan() === 'free' ? ' \u00b7 <a href="#plans" data-view-link="plans">Pro and Business: unlimited</a>' : '');
+    if (canSaveNew()) hideLimits();
     $('#jobsTable tbody').innerHTML = list.map(function (x) {
       var r = x.result, j = x.job, neg = r.netProfitCents < 0;
       var isBest = list.length > 1 && best !== null && r.profitPerHourCents === best && best > 0;
@@ -568,7 +607,7 @@
       persistJobs(); persistDocs(); persistProfile();
       if (res.data.draft) loadJob(res.data.draft);
       S.docId = null; fillProfile(); renderJobs(); renderDocs(); recalc();
-      toast('Backup restored: ' + s.jobs + ' jobs, ' + (s.estimates + s.invoices) + ' documents.');
+      toast('Backup restored: ' + s.jobs + ' jobs, ' + (s.estimates + s.invoices) + ' documents.' + (canSaveNew() ? '' : ' Free plan: nothing was removed, but new jobs can\u2019t be added past ' + P.FREE_SAVED_JOBS + '.'));
     };
     reader.readAsText(file);
   }
@@ -585,6 +624,72 @@
   }
   function templateJob(id) { var t = T.filter(function (x) { return x.id === id; })[0]; if (!t) return null; var j = normalizeJob(clone(t.job)); if (!j.burden) j.burden = profileBurden(); return j; }
 
+  // ---------- plans & founding-list signup (all prices from js/plans.js) ----------
+  var billing = 'monthly';
+  function renderPlans() {
+    $('#planCards').innerHTML = P.PLANS.map(function (p) {
+      var paid = p.monthlyCents > 0;
+      var o = paid ? P.option(p.id + '-' + billing) : null;
+      var other = billing === 'yearly' ? 'or ' + P.priceText(p, 'monthly') + ' billed monthly' : 'or ' + P.priceText(p, 'yearly') + ' billed yearly (saves ' + P.fmt(P.yearlySavingsCents(p)) + ')';
+      return '<article class="card plan' + (p.featured ? ' plan-pro' : '') + '" data-plan="' + p.id + '" aria-labelledby="plan-' + p.id + '">' +
+        '<div class="plan-head"><h2 id="plan-' + p.id + '">' + esc(p.name) + '</h2>' + (paid ? '<span class="pill pill-gold">Planned</span>' : '<span class="pill pill-ok">Available now</span>') + '</div>' +
+        '<p class="plan-price"><span class="amt" data-price-out="' + p.id + '">' + P.fmt(P.priceCents(p, billing)) + '</span>' +
+        '<span class="per">' + (paid ? (billing === 'yearly' ? '/yr' : '/mo') : ' forever') + '</span></p>' +
+        '<p class="plan-sub">' + (paid ? esc(other) : 'Up to ' + P.FREE_SAVED_JOBS + ' saved jobs') + '</p>' +
+        '<p class="plan-blurb">' + esc(p.blurb) + '</p>' +
+        '<ul>' + p.includes.map(function (f) { return '<li>' + esc(f) + '</li>'; }).join('') + '</ul>' +
+        '<div class="plan-cta">' + (paid
+          ? '<button class="btn' + (p.featured ? ' btn-primary' : '') + '" type="button" data-plan-option="' + o.key + '">' + esc(P.foundingButtonText(o)) + '</button>'
+          : '<a class="btn" href="#calculator" data-view-link="calculator">Use it free</a>') + '</div>' +
+        '</article>';
+    }).join('');
+    $$('#planCards [data-view-link]').forEach(function (a) { a.addEventListener('click', function (e) { e.preventDefault(); go(a.getAttribute('data-view-link')); }); });
+    var dp = devPlan();
+    $('#devUnlockNote').hidden = !dp;
+    if (dp) $('#devUnlockText').textContent = 'Dev unlock on: ' + P.plan(dp).name + ' limits in this browser only. Not a subscription.';
+  }
+  function fillPlanStatic() {
+    $$('[data-plan-text]').forEach(function (e) { var t = P.textFor(e.getAttribute('data-plan-text')); if (t) e.textContent = t; });
+    $('#plansTesting').textContent = P.TESTING_NOTE;
+    $('#notBuiltList').innerHTML = P.NOT_BUILT.map(function (f) { return '<li>' + esc(f) + '</li>'; }).join('');
+    $('#suPlan').innerHTML = P.PLAN_OPTIONS.map(function (o) { return '<option value="' + o.key + '">' + esc(o.short) + '</option>'; }).join('');
+    $('#suPlan').value = 'pro-monthly';
+    var open = P.hasEndpoint(CFG.SIGNUP_ENDPOINT);
+    $('#signupIdle').textContent = open
+      ? 'Sent by FormSubmit to ' + CFG.contactEmail + '. We\u2019ll use your email only to contact you about the founding offer. Joining doesn\u2019t start a subscription or a charge.'
+      : 'Signups open soon. This form doesn\u2019t send or save anything yet.';
+    $('#signupSubmit').textContent = open ? 'Join the list' : 'Join the list (opens soon)';
+  }
+  function signupErr(field, msg) { var e = $('#su' + field + 'Err'); e.textContent = msg || ''; e.hidden = !msg; var i = $('#su' + field); if (msg) i.setAttribute('aria-invalid', 'true'); else i.removeAttribute('aria-invalid'); }
+  function signupMsg(text, kind) { var m = $('#signupMsg'); m.textContent = text; m.className = 'signup-msg' + (kind ? ' ' + kind : ''); m.hidden = !text; }
+  function pickPlanOption(key) {
+    $('#suPlan').value = key; signupErr('Plan', '');
+    $('#signup').scrollIntoView({ block: 'start' });
+    $('#suEmail').focus({ preventScroll: true });
+  }
+  function submitSignup(e) {
+    e.preventDefault();
+    if ($('#suWebsite').value) return; // bot trap
+    var res = P.signupPayload({ email: $('#suEmail').value, plan: $('#suPlan').value, note: $('#suNote').value }, CFG.name);
+    signupErr('Email', res.errors.email); signupErr('Plan', res.errors.plan); signupErr('Note', res.errors.note);
+    if (!res.ok) { signupMsg('', ''); (res.errors.email ? $('#suEmail') : res.errors.plan ? $('#suPlan') : $('#suNote')).focus(); return; }
+    if (!P.hasEndpoint(CFG.SIGNUP_ENDPOINT)) {
+      signupMsg('Thanks! Signups open soon. Nothing was sent or saved, so please check back shortly.', 'soon');
+      return;
+    }
+    var btn = $('#signupSubmit'); btn.disabled = true; signupMsg('Sending\u2026', '');
+    fetch(String(CFG.SIGNUP_ENDPOINT).trim(), { method: 'POST', body: JSON.stringify(P.formSubmitBody(res.payload)),
+      headers: { 'Content-Type': 'application/json', Accept: 'application/json' }, credentials: 'omit' })
+      .then(function (r) { return r.json().catch(function () { return {}; }).then(function (data) { return { r: r, data: data }; }); })
+      .then(function (x) {
+        if (!P.formSubmitOk(x.r.status, x.data)) throw new Error('HTTP ' + x.r.status);
+        signupMsg('You\u2019re on the founding list for ' + res.payload.plan + ' (' + res.payload.price + '). Nothing is billed; we\u2019ll email you before anything is.', 'ok');
+        $('#suEmail').value = ''; $('#suNote').value = '';
+      })
+      .catch(function () { signupMsg('That didn\u2019t go through. Check your connection and try again.', 'bad'); })
+      .then(function () { btn.disabled = false; });
+  }
+
   // ---------- routing ----------
   var VIEWS = ['calculator', 'jobs', 'documents', 'blueprints', 'profile', 'plans'];
   function go(v, noScroll) {
@@ -596,6 +701,7 @@
     if (location.hash.slice(1) !== v) history.replaceState(null, '', '#' + v);
     if (v === 'jobs') renderJobs();
     if (v === 'documents') renderDocs();
+    if (v === 'plans') renderPlans();
     if (!noScroll) window.scrollTo(0, 0);
   }
 
@@ -710,7 +816,7 @@
       var id = b.closest('tr').getAttribute('data-id'), j = savedVersion(id); if (!j) return;
       var act = b.getAttribute('data-act');
       if (act === 'open') { loadJob(j); go('calculator'); toast('Opened “' + j.name + '”'); }
-      if (act === 'dup') { duplicateJob(j); renderJobs(); }
+      if (act === 'dup') { duplicateJob(j, 'jobs'); renderJobs(); }
       if (act === 'est') { loadJob(j); createDoc('estimate', j); }
       if (act === 'del') {
         var idx = S.jobs.indexOf(j); S.jobs.splice(idx, 1); persistJobs(); renderJobs(); renderSaveStatus();
@@ -774,10 +880,24 @@
     $('#tplGrid').addEventListener('click', function (e) {
       var b = e.target.closest('[data-tpl]'); if (!b) return;
       var j = templateJob(b.getAttribute('data-tpl')); if (!j) return;
-      if (b.getAttribute('data-tpl-act') === 'copy') { j.name = j.name + ' (my template)'; loadJob(j); saveJob(); go('calculator'); toast('Saved “' + j.name + '” to your jobs. Change the numbers to yours.'); }
+      if (b.getAttribute('data-tpl-act') === 'copy') {
+        j.name = j.name + ' (my template)'; loadJob(j);
+        if (saveJob()) { go('calculator'); toast('Saved “' + j.name + '” to your jobs. Change the numbers to yours.'); }
+        else { go('calculator'); showLimit('calc'); }
+      }
       else { j.id = null; var prev = clone(S.job); loadJob(j); go('calculator'); toast('Loaded template. Save it to keep your changes.', function () { loadJob(prev); }); }
     });
     $('#dlWorksheet').addEventListener('click', function () { download(slug(CFG.name) + '-worksheet.csv', CSV.worksheetCsv(CFG.name)); toast('Worksheet downloaded'); });
+    // plans, founding signup, Free-limit prompts
+    $$('input[name="billing"]').forEach(function (r) { r.addEventListener('change', function () { if (r.checked) { billing = r.value; renderPlans(); } }); });
+    $('#planCards').addEventListener('click', function (e) { var b = e.target.closest('[data-plan-option]'); if (b) pickPlanOption(b.getAttribute('data-plan-option')); });
+    $('#signupForm').addEventListener('submit', submitSignup);
+    $('#devUnlockOff').addEventListener('click', function () { try { window.localStorage.removeItem(DEV_KEY); } catch (e2) { /* ignore */ } renderPlans(); renderJobs(); toast('Dev unlock turned off. Free limits apply again.'); });
+    $$('.limit-box').forEach(function (box) { box.addEventListener('click', function (e) {
+      var b = e.target.closest('[data-limit-act]'); if (!b) return;
+      var act = b.getAttribute('data-limit-act'); hideLimits();
+      if (act === 'plans') go('plans'); else if (act === 'jobs') go('jobs');
+    }); });
     // routing
     window.addEventListener('hashchange', function () { var h = location.hash.slice(1); if (VIEWS.indexOf(h) >= 0) go(h); });
     $$('[data-view-link]').forEach(function (a) { a.addEventListener('click', function (e) { e.preventDefault(); go(a.getAttribute('data-view-link')); }); });
@@ -797,7 +917,7 @@
 
   // ---------- init ----------
   function init() {
-    applyConfig();
+    applyConfig(); applyDevUnlockParam(); fillPlanStatic();
     var draft = store.loadDraft(), ui = store.loadUi();
     var first = !store.isOnboarded() && !draft && S.jobs.length === 0;
     S.job = draft ? normalizeJob(draft) : templateJob('deck-repair');

@@ -1,12 +1,12 @@
 {
-  "name": "job-profit-calculator",
+  "name": "levelpenny",
   "version": "1.0.0",
   "private": true,
-  "description": "Job Profit Calculator by Carina Dataworks — a static job/quote profit calculator for contractors and service businesses.",
+  "description": "LevelPenny, a Carina Dataworks product — a static job/quote profit calculator for contractors and service businesses.",
   "license": "UNLICENSED",
   "scripts": {
     "start": "node tests/serve.js",
-    "test": "node --test tests/calc.test.js",
+    "test": "node --test tests/calc.test.js tests/pricing.test.js",
     "test:e2e": "node tests/e2e.js && node tests/e2e-wide.js && node tests/e2e-spacing.js",
     "test:all": "npm test && npm run test:e2e"
   },

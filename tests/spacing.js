@@ -10,7 +10,7 @@ const BOX = [
   '.topbar', '.site-foot', '.hero', '.modebar [role="tab"]', '.jobbar', '.card', '.sec', '.results', '.res-card',
   '.kpi-main', '.kpis > div', '.quote-out', '.value-msg', '.alert', '.alert-loss', '.warnings li', '.line', '.docline',
   '.menu-list', 'details.rebuild', '.docs-list-card', '.docs-list button', '.doc-editor', '.preview-wrap', '.paper', '.profile-hint',
-  '.logo-preview', '.tpl', '.tpl-stats > div', '.plan', 'table', '.math', '.chart', '.doc-sum', '.downloads > *', '.dl-grid > *',
+  '.logo-preview', '.tpl', '.tpl-stats > div', '.plan', '.plan-cta', '.founding', '.dev-unlock', '.signup-msg', '.limit-box', '.limit-actions', '.usage', '.signup-actions', 'table', '.math', '.chart', '.doc-sum', '.downloads > *', '.dl-grid > *',
   '.toast', '.tour', '.tour-cred', '.tour-agree', '.tour-actions', '.mobilebar', '.cred-badge', '.disclaimer',
   '.view-actions', '.jobbar-actions', '.doc-actions', '.quote-actions', '.tpl-actions',
   // customer documents and the job sheet (screen preview and print)

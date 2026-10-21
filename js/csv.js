@@ -17,7 +17,7 @@
 
   function jobToCsv(job, r, appName) {
     var L = [];
-    L.push(row([appName || 'Job Profit Calculator', 'Job export']));
+    L.push(row([appName || 'LevelPenny', 'Job export']));
     L.push(row(['Job', job.name || 'Untitled job']));
     L.push(row(['Customer', (job.customer && job.customer.name) || job.client || '']));
     L.push('');
@@ -56,7 +56,7 @@
   }
   var WORKSHEET = [["Section", "Field", "Qty / hours", "Unit cost / rate", "Value", "Notes"], ["Job", "Job name", "", "", "", ""], ["Job", "Customer name", "", "", "", ""], ["Job", "Job site address", "", "", "", ""], ["Price", "Price you charge the customer", "", "", "", "Before any sales tax you collect"], ["Materials", "Material line 1", "", "", "", "Qty x unit cost"], ["Materials", "Material line 2", "", "", "", ""], ["Materials", "Material line 3", "", "", "", ""], ["Materials", "Material line 4", "", "", "", ""], ["Materials", "Material line 5", "", "", "", ""], ["Materials", "Material line 6", "", "", "", ""], ["Labor", "Crew member 1 (wage x hours)", "", "", "", "Include payroll tax / workers' comp in the wage if you want them counted"], ["Labor", "Crew member 2 (wage x hours)", "", "", "", ""], ["Labor", "Crew member 3 (wage x hours)", "", "", "", ""], ["Owner time", "Your hours on this job", "", "", "", "Quoting, buying, driving, working, invoicing. Not a cost."], ["Shipping & travel", "Shipping / delivery fees", "", "", "", ""], ["Shipping & travel", "Miles driven (all trips) x cost per mile", "", "0.70", "", "Fuel + wear; IRS standard rate is a fair default"], ["Card fees", "Fee percent", "", "", "", "Stripe 2.9 / Square 2.6"], ["Card fees", "Fixed fee per payment", "", "", "", "Stripe 0.30 / Square 0.15"], ["Card fees", "Number of payments", "", "", "", "e.g. 2 for deposit + final"], ["Equipment / rental", "Equipment or rental", "", "", "", ""], ["Permits & fees", "Permit", "", "", "", ""], ["Subcontractors", "Subcontractor", "", "", "", ""], ["Other", "Other cost", "", "", "", ""], ["Overhead", "Overhead (% of price or flat $)", "", "", "", "Insurance, truck, phone, software, rent"], ["Tax", "Income tax set-aside % of profit", "", "", "", "Only applies when the job makes a profit"], ["Results", "Total costs", "", "", "", "Direct costs + card fees + overhead"], ["Results", "Net profit", "", "", "", "Price - total costs - tax set-aside"], ["Results", "Total hours (crew + yours)", "", "", "", ""], ["Results", "Profit per hour", "", "", "", "Net profit / total hours"]];
   function worksheetCsv(appName) {
-    var L = [row([(appName || 'Job Profit Calculator') + ' - blank job worksheet']), row(['Fill in the Value column (and Qty / Unit cost where shown). Blank = 0. Then enter the numbers in the app, or total them here.'])];
+    var L = [row([(appName || 'LevelPenny') + ' - blank job worksheet']), row(['Fill in the Value column (and Qty / Unit cost where shown). Blank = 0. Then enter the numbers in the app, or total them here.'])];
     WORKSHEET.forEach(function (r) { L.push(row(r)); });
     return L.join('\r\n') + '\r\n';
   }

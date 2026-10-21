@@ -9,6 +9,8 @@ const path = require('path'); const fs = require('fs'); const os = require('os')
 const pw = require('playwright-core');
 const { start } = require('./serve.js');
 const { spacing } = require('./spacing.js');
+const { guardBrowser } = require('./netguard.js');
+const blockedNet = [], submissions = [];
 
 const SIZES = [[1920, 1080], [1600, 900], [1366, 768], [1280, 720], [1440, 900], [1512, 982], [1728, 1117], [390, 844]]
   .filter(([w]) => !process.env.SP_SIZES || process.env.SP_SIZES.split(',').includes(String(w)));
@@ -23,7 +25,7 @@ const all = []; let states = 0;
   const BASE = `http://127.0.0.1:${server.address().port}/`;
   console.log(`Spacing check against ${BASE}\n`);
   for (const bn of BROWSERS) {
-    const browser = await pw[bn].launch();
+    const browser = guardBrowser(await pw[bn].launch(), BASE, blockedNet, bn, submissions); // FormSubmit answered locally // all non-local network is aborted
     for (const [w, h] of SIZES) {
       const tag = `${bn}-${w}x${h}`;
       const phone = w < 600;
@@ -62,7 +64,16 @@ const all = []; let states = 0;
         await p.fill('#price', old);
         await click('#saveJob'); await p.waitForSelector('#toast:not([hidden])'); await at('toast', null, true); await waitToast();
         await click('#dupJob'); await waitToast();
+        await click('#newJob'); await waitToast(); await p.fill('#jobName', 'Third job'); await p.fill('#price', '1200'); await click('#saveJob'); await waitToast();
+        await click('#newJob'); await waitToast(); await p.fill('#jobName', 'Fourth job'); await click('#saveJob');
+        await p.waitForSelector('#limitCalc:not([hidden])'); await at('free-limit');
+        await click('#limitCalc [data-limit-act="close"]');
         await view('jobs'); await at('saved-jobs');
+        await p.locator('#jobsTable tbody tr').first().locator('[data-act="dup"]').click();
+        await p.waitForSelector('#limitJobs:not([hidden])'); await at('saved-jobs-limit', null, true);
+        await click('#limitJobs [data-limit-act="close"]');
+        await p.locator('#jobsTable tbody tr', { hasText: 'Deck' }).first().locator('[data-act="open"]').click(); // back to the example job
+        await p.waitForSelector('section[data-view="calculator"]:not([hidden])'); await waitToast();
         await view('profile');
         await p.fill('#pfName', 'Ridgeline Carpentry LLC'); await p.fill('#pfPayLink', 'https://buy.stripe.com/test_ridgeline');
         await p.fill('#pfLicense', 'NC-GC-12345'); await p.press('#pfPayLink', 'Tab');
@@ -83,6 +94,10 @@ const all = []; let states = 0;
         await p.evaluate(() => document.body.removeAttribute('data-print'));
         await view('blueprints'); await at('templates');
         await view('plans'); await at('plans');
+        await click('.billing-seg label:has(input[value="yearly"])'); await at('plans-yearly', null, true);
+        await click('[data-plan-option="business-yearly"]'); await click('#signupSubmit'); await at('signup-errors', null, true);
+        await p.fill('#suEmail', 'crew@example.com'); await click('#signupSubmit'); await p.waitForFunction(() => document.querySelector('#signupMsg').classList.contains('ok'));
+        await p.evaluate(() => document.getElementById('signup').scrollIntoView({ block: 'start' })); await at('signup-sent');
         for (const pg of ['guide', 'terms', 'privacy']) { await p.goto(BASE + pg + '.html'); await at(pg); }
       } catch (e) { found.push('CRASH: ' + e.message.split('\n')[0]); }
       console.log(`  ${found.length ? '✗' : '✓'} ${tag}: ${found.length} spacing violation(s)`);
@@ -96,5 +111,6 @@ const all = []; let states = 0;
   }
   server.close();
   console.log(`\n${states} page states checked; ${all.length} spacing violations. State screenshots: ${OUT}`);
-  process.exit(all.length ? 1 : 0);
+  if (blockedNet.length) console.log('Internet requests attempted (blocked):\n' + blockedNet.join('\n'));
+  process.exit(all.length || blockedNet.length ? 1 : 0);
 })().catch(e => { console.error('Spacing e2e crashed:', e); process.exit(1); });

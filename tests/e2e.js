@@ -10,6 +10,8 @@ const os = require('os');
 const { execFileSync } = require('child_process');
 const { chromium } = require('playwright-core');
 const { start } = require('./serve.js');
+const { guardBrowser } = require('./netguard.js');
+const P = require('../js/plans.js');
 const C = require('../js/calc.js');
 
 const ROOT = path.resolve(__dirname, '..');
@@ -82,7 +84,8 @@ const FENCE = {
 (async () => {
   const server = await start(0);
   const BASE = `http://127.0.0.1:${server.address().port}/`;
-  const browser = await chromium.launch();
+  const blockedNet = [], submissions = [];
+  const browser = guardBrowser(await chromium.launch(), BASE, blockedNet, 'chromium', submissions); // all non-local network is aborted
   console.log(`E2E against ${BASE}\n`);
   let backupFile = null, estimateNo = null, invoiceNo = null;
 
@@ -387,7 +390,7 @@ const FENCE = {
     check(all.text.split('\r\n')[0].startsWith('Job,Customer,Price'), 'all-jobs CSV header');
     await page.click('[data-view-link="blueprints"]');
     const ws = await download(page, () => page.click('#dlWorksheet'));
-    check(ws.text.startsWith('Job Profit Calculator - blank job worksheet'), 'worksheet CSV');
+    check(ws.text.startsWith('LevelPenny - blank job worksheet'), 'worksheet CSV');
     fs.copyFileSync(ws.path, path.join(SHOTS, 'sample-worksheet.csv'));
     fs.copyFileSync(one.path, path.join(SHOTS, 'sample-job-export.csv'));
   });
@@ -411,6 +414,144 @@ const FENCE = {
     await page.click('#toastUndo');
     eq(await page.locator('#jobsTable tbody tr').count(), 3, 'undo restores');
     await shot(page, 'desktop-05-saved-jobs.png');
+  });
+
+  await step('Free plan: 4th new job is blocked with an upgrade prompt; updates, duplicate and template copy respect the limit', async () => {
+    await page.click('[data-view-link="jobs"]');
+    eq(await text(page, '#jobsUsage'), '3 of 3 free saved jobs used · Pro and Business: unlimited', 'usage line');
+    await page.locator('#jobsTable tbody tr').first().locator('[data-act="dup"]').click();
+    check(await page.isVisible('#limitJobs'), 'duplicate from Saved jobs shows the limit prompt');
+    eq(await page.locator('#jobsTable tbody tr').count(), 3, 'duplicate not added');
+    await page.click('#limitJobs [data-limit-act="close"]');
+    await page.click('[data-view-link="calculator"]');
+    await page.click('#saveJob'); // the open job is already saved: updating it always works
+    check(await page.isHidden('#limitCalc'), 'updating a saved job is not blocked');
+    await page.click('#newJob'); await page.fill('#jobName', 'Gutter clean — Ruiz'); await page.fill('#price', '450');
+    await page.click('#saveJob');
+    await page.waitForSelector('#limitCalc:not([hidden])');
+    const msg = await text(page, '#limitCalc');
+    for (const sub of ['Free plan saves up to 3 jobs', 'You have 3 saved', P.priceText(P.plan('pro'), 'monthly'), P.priceText(P.plan('pro'), 'yearly'), 'not billed yet']) check(msg.includes(sub), 'limit prompt says ' + sub + ': ' + msg);
+    eq(await page.inputValue('#jobName'), 'Gutter clean — Ruiz', 'blocked job stays in the calculator');
+    eq(await text(page, '#saveStatus'), 'Not saved', 'blocked job is not saved');
+    await page.click('#dupJob'); check(await page.isVisible('#limitCalc'), 'Duplicate blocked too');
+    await page.click('[data-view-link="blueprints"]'); await page.click('[data-tpl="house-cleaning"][data-tpl-act="copy"]');
+    await page.waitForSelector('section[data-view="calculator"]:not([hidden])');
+    check(await page.isVisible('#limitCalc'), 'template copy blocked with prompt');
+    await page.click('#limitCalc [data-limit-act="plans"]');
+    await page.waitForSelector('section[data-view="plans"]:not([hidden])');
+    await page.click('[data-view-link="jobs"]');
+    eq(await page.locator('#jobsTable tbody tr').count(), 3, 'still exactly 3 saved jobs');
+    // delete one -> room for one more; undo puts it back (nothing is ever deleted by the limit)
+    await page.locator('#jobsTable tbody tr').first().locator('[data-act="del"]').click();
+    eq(await text(page, '#jobsUsage'), '2 of 3 free saved jobs used · Pro and Business: unlimited', 'usage after delete');
+    await page.click('#toastUndo');
+    eq(await page.locator('#jobsTable tbody tr').count(), 3, 'undo restores');
+  });
+
+  await step('Plans page: real Free / Pro / Business cards, monthly and yearly, founding offer, planned and not billed', async () => {
+    await page.click('[data-view-link="plans"]');
+    const main = await text(page, 'section[data-view="plans"]');
+    for (const bad of ['Coming later', 'to be announced', 'Nothing to buy today', 'Contractor Pro']) check(!main.includes(bad), 'old placeholder: ' + bad);
+    check(main.includes(P.FOUNDING.text), 'founding wording');
+    check(main.includes('Planned pricing, not billed yet'), 'planned label');
+    check(main.includes('Not built yet, so not part of any plan'), 'unbuilt features called out');
+    eq(await page.locator('#planCards .plan').count(), 3, 'three plan cards');
+    const prices = () => page.$$eval('#planCards .plan-price', a => a.map(e => e.textContent.trim()));
+    eq(JSON.stringify(await prices()), JSON.stringify(['$0 forever', '$9/mo', '$19/mo']), 'monthly prices');
+    eq(JSON.stringify(await page.$$eval('[data-plan-option]', a => a.map(e => e.textContent.trim()))), JSON.stringify(['Join founding list: Pro $9/mo', 'Join founding list: Business $19/mo']), 'monthly buttons');
+    await page.click('.billing-seg label:has(input[value="yearly"])');
+    eq(JSON.stringify(await prices()), JSON.stringify(['$0 forever', '$79/yr', '$169/yr']), 'yearly prices');
+    check((await text(page, '[data-plan="pro"] .plan-sub')).includes('$9/mo'), 'yearly card mentions monthly');
+    eq(JSON.stringify(await page.$$eval('[data-plan-option]', a => a.map(e => e.textContent.trim()))), JSON.stringify(['Join founding list: Pro $79/yr', 'Join founding list: Business $169/yr']), 'yearly buttons');
+    const gaps = await page.$$eval('#planCards .plan', a => { const r = a.map(e => e.getBoundingClientRect()); return [r[1].left - r[0].right, r[2].left - r[1].right, Math.abs(r[0].top - r[2].top)]; });
+    check(gaps[0] >= 12 && gaps[1] >= 12 && gaps[2] < 1, 'cards side by side, >= 12px apart: ' + gaps);
+    eq(JSON.stringify(await page.$$eval('#suPlan option', a => a.map(o => o.textContent))), JSON.stringify(P.PLAN_OPTIONS.map(o => o.short)), 'signup plan choices');
+    await axe(page, 'plans');
+  });
+
+  await step('Founding-list signup (live FormSubmit endpoint, intercepted: never leaves the box): validates, POSTs, confirms', async () => {
+    const FS = 'https://formsubmit.co/ajax/levelpennyapp@gmail.com';
+    const n0 = submissions.length;
+    const storeBefore = await page.evaluate(() => JSON.stringify(Object.keys(localStorage).sort()));
+    await page.click('[data-plan-option="business-yearly"]');
+    eq(await page.inputValue('#suPlan'), 'business-yearly', 'clicked option is preselected');
+    eq(await page.evaluate(() => document.activeElement.id), 'suEmail', 'email focused');
+    check((await text(page, '#signupIdle')).includes('levelpennyapp@gmail.com'), 'says where signups go');
+    await page.click('#signupSubmit');
+    check(await page.isVisible('#suEmailErr'), 'empty email flagged');
+    await page.fill('#suEmail', 'not-an-email'); await page.click('#signupSubmit');
+    check((await text(page, '#suEmailErr')).includes('doesn’t look right'), 'bad email flagged');
+    eq(submissions.length, n0, 'nothing sent while invalid');
+    await page.fill('#suEmail', 'dana@ridgeline.example'); await page.fill('#suNote', '3-person deck crew');
+    await page.click('#signupSubmit');
+    await page.waitForFunction(() => document.querySelector('#signupMsg').classList.contains('ok'));
+    check((await text(page, '#signupMsg')).includes('Business yearly ($169/yr)'), 'confirmation names the plan');
+    check(await page.isHidden('#suEmailErr'), 'error cleared');
+    eq(submissions.length, n0 + 1, 'exactly one (intercepted) submission');
+    const sub = submissions[n0];
+    eq(sub.url, FS, 'FormSubmit AJAX endpoint'); eq(sub.method, 'POST', 'POST');
+    check(/application\/json/.test(sub.headers['content-type']) && /application\/json/.test(sub.headers.accept), 'JSON in, JSON out (AJAX)');
+    const want = { email: 'dana@ridgeline.example', _replyto: 'dana@ridgeline.example', _subject: 'LevelPenny founding-list signup', _honey: '', _captcha: 'false', _template: 'table',
+      Plan: 'Business yearly', Price: '$169/yr', Offer: '40% off for life (founding member)', App: 'LevelPenny', Note: '3-person deck crew' };
+    eq(JSON.stringify(sub.body), JSON.stringify(want), 'FormSubmit payload');
+    eq(await page.evaluate(() => JSON.stringify(Object.keys(localStorage).sort())), storeBefore, 'no new storage keys');
+    check(!(await page.evaluate(() => JSON.stringify(localStorage))).includes('dana@ridgeline'), 'email not stored locally');
+    await page.$eval('#signup', e => e.scrollIntoView({ block: 'center' }));
+    await shot(page, 'desktop-chrome-signup.png');
+    // FormSubmit sometimes answers 200 {success:"false"}: show an error, keep what was typed
+    await page.route(FS, r => r.fulfill({ status: 200, contentType: 'application/json', headers: { 'Access-Control-Allow-Origin': '*' }, body: '{"success":"false","message":"x"}' }));
+    await page.fill('#suEmail', 'lee@example.com'); await page.click('#signupSubmit');
+    await page.waitForFunction(() => document.querySelector('#signupMsg').classList.contains('bad'));
+    eq(await page.inputValue('#suEmail'), 'lee@example.com', 'input kept after a failed send');
+    await page.unroute(FS);
+    // honeypot filled = bot: nothing sent
+    const n1 = submissions.length;
+    await page.$eval('#suWebsite', e => { e.value = 'spam'; }); await page.click('#signupSubmit'); await page.waitForTimeout(300);
+    eq(submissions.length, n1, 'honeypot blocks the send');
+    await page.$eval('#suWebsite', e => { e.value = ''; });
+    await page.click('.billing-seg label:has(input[value="monthly"])');
+  });
+
+  await step('Signup with SIGNUP_ENDPOINT emptied: "Signups open soon", sends and stores nothing', async () => {
+    const c5 = await browser.newContext({ viewport: { width: 1440, height: 900 } });
+    await c5.addInitScript(INIT);
+    await c5.route('**/js/config.js', route => route.fulfill({ contentType: 'text/javascript',
+      body: fs.readFileSync(path.join(ROOT, 'js/config.js'), 'utf8').replace(/SIGNUP_ENDPOINT: '[^']*'/, "SIGNUP_ENDPOINT: ''") }));
+    const p5 = await c5.newPage(); watch(p5, 'signup-closed');
+    const reqs = []; p5.on('request', r => { if (!r.url().startsWith(BASE)) reqs.push(r.url()); });
+    const n0 = submissions.length;
+    await p5.goto(BASE); await p5.check('#agreeTerms'); await p5.click('#tourSkip'); await p5.click('[data-view-link="plans"]');
+    check((await text(p5, '#signupIdle')).includes('Signups open soon'), 'idle state says signups open soon');
+    await p5.click('[data-plan-option="pro-monthly"]');
+    await p5.fill('#suEmail', 'lee@example.com'); await p5.click('#signupSubmit');
+    await p5.waitForSelector('#signupMsg:not([hidden])');
+    check((await text(p5, '#signupMsg')).includes('Signups open soon. Nothing was sent or saved'), 'friendly soon state');
+    eq(reqs.length, 0, 'no request left the page: ' + reqs.join(', '));
+    eq(submissions.length, n0, 'nothing submitted');
+    check(!(await p5.evaluate(() => JSON.stringify(localStorage))).includes('lee@example'), 'email not stored locally');
+    await c5.close();
+  });
+
+  await step('Dev unlock (local only): ?dev-unlock=pro lifts the cap in this browser; turning it off restores Free', async () => {
+    const c6 = await browser.newContext({ viewport: { width: 1440, height: 900 } });
+    await c6.addInitScript(INIT);
+    const p6 = await c6.newPage(); watch(p6, 'dev-unlock');
+    await p6.goto(BASE + '?dev-unlock=pro#calculator'); await p6.check('#agreeTerms'); await p6.click('#tourSkip');
+    check(!(await p6.evaluate(() => location.search)), 'param removed from the URL');
+    for (let i = 0; i < 4; i++) { await p6.click('#newJob'); await p6.fill('#jobName', 'Job ' + (i + 1)); await p6.click('#saveJob'); }
+    check(await p6.isHidden('#limitCalc'), 'no prompt with dev unlock');
+    await p6.click('[data-view-link="jobs"]');
+    eq(await p6.locator('#jobsTable tbody tr').count(), 4, '4 jobs saved with Pro dev unlock');
+    eq(await text(p6, '#jobsUsage'), '4 saved jobs', 'usage without cap');
+    await p6.click('[data-view-link="plans"]');
+    check((await text(p6, '#devUnlockText')).includes('Not a subscription'), 'dev unlock is labelled');
+    await p6.click('#devUnlockOff');
+    check(await p6.isHidden('#devUnlockNote'), 'dev unlock off');
+    await p6.click('[data-view-link="jobs"]');
+    eq(await text(p6, '#jobsUsage'), '4 of 3 free saved jobs used · Pro and Business: unlimited', 'over the limit, nothing deleted');
+    await p6.click('[data-view-link="calculator"]'); await p6.click('#newJob'); await p6.click('#saveJob');
+    check(await p6.isVisible('#limitCalc'), 'Free limit back after turning off');
+    await c6.close();
   });
 
   await step('One-click backup downloads profile, jobs, estimates and invoices as JSON', async () => {
@@ -447,7 +588,10 @@ const FENCE = {
     const t = await tp.textContent('main');
     for (const s of ['Last updated', 'Connecticut', '12 MONTHS', 'attorney', 'INDEMNIF', 'AS IS', 'No guarantee of profit', 'not financial, tax, accounting, legal', 'templates', 'backups', 'Carina Dataworks']) check(t.toUpperCase().includes(s.toUpperCase()), 'terms mention ' + s);
     await tp.goto(BASE + 'privacy.html');
+    check(t.includes('LevelPenny, a Carina Dataworks product'), 'terms name the product');
     check((await tp.textContent('main')).includes('only on your device'), 'privacy local storage');
+    check((await tp.textContent('main')).includes('LevelPenny, a Carina Dataworks product'), 'privacy names the product');
+    check((await tp.title()).includes('LevelPenny'), 'privacy title');
     await axe(tp, 'terms/privacy');
     await tp.close();
   });
@@ -455,7 +599,7 @@ const FENCE = {
   await step('Printable field guide fits on one Letter page', async () => {
     const gp = await ctx.newPage(); watch(gp, 'guide');
     await gp.goto(BASE + 'guide.html');
-    check((await gp.title()).includes('Job Profit Calculator'), 'name from config');
+    check((await gp.title()).includes('LevelPenny'), 'name from config');
     check((await gp.textContent('main')).includes('$30.86/hr'), 'worked example');
     await gp.pdf({ path: path.join(SHOTS, 'field-guide.pdf'), format: 'Letter', printBackground: true, preferCSSPageSize: true });
     eq(pdfPages(path.join(SHOTS, 'field-guide.pdf')), 1, 'guide pages');
@@ -542,7 +686,7 @@ const FENCE = {
     const c3 = await browser.newContext({ viewport: { width: 1280, height: 800 } });
     await c3.addInitScript(INIT);
     await c3.route('**/js/config.js', async route => {
-      const body = fs.readFileSync(path.join(ROOT, 'js/config.js'), 'utf8').replace("name: 'Job Profit Calculator'", "name: 'CrewMargin Test'");
+      const body = fs.readFileSync(path.join(ROOT, 'js/config.js'), 'utf8').replace("name: 'LevelPenny'", "name: 'CrewMargin Test'");
       await route.fulfill({ body, contentType: 'text/javascript' });
     });
     const p3 = await c3.newPage(); watch(p3, 'rename');
@@ -566,8 +710,9 @@ const FENCE = {
     await c4.close();
   });
 
-  await step('No console errors, warnings, failed requests or page errors', async () => {
+  await step('No console errors, warnings, failed requests, page errors or internet requests (all blocked)', async () => {
     eq(consoleProblems.length, 0, 'console problems:\n' + consoleProblems.join('\n'));
+    eq(blockedNet.length, 0, 'requests to the internet were attempted (and blocked):\n' + blockedNet.join('\n'));
   });
 
   await browser.close();
