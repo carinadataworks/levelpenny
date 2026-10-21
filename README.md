@@ -79,6 +79,9 @@ AA contrast (axe-core clean of serious/critical issues), sticky mobile results b
 
 ```
 direct costs   = materials + crew labor + shipping + mileage + equipment + permits + subcontractors + other
+crew labor     = per person: wage × hours, plus for employees (not 1099 subs) the labor burden:
+                 wage × hours × (payroll tax% + unemployment% + workers' comp% + benefits%) + benefits $/hr × hours + per diem
+loaded cost/hr = that person's labor cost ÷ hours
 card fees      = price × fee% + fixed fee × number of payments      (0 if price is 0)
 overhead       = price × overhead%   or   flat amount
 total costs    = direct costs + card fees + overhead
@@ -92,6 +95,14 @@ break-even     = lowest price (to the cent) where price − total costs ≥ 0
 find my price  = lowest price (to the cent) that meets the margin / hourly / profit target
 ```
 
+**Labor burden (employee cost).** Each crew member is *Employee (W-2)* or *1099 / subcontractor*. Employees get the
+job's burden rates (FICA-style payroll tax, unemployment, workers' comp, insurance/benefits as % and/or $/hr) plus an
+optional per-diem / travel pay; subs get none. New jobs and templates start from the Business profile defaults
+(7.65% + 3% + 5%, labelled as editable examples with a check-with-your-accountant, not-tax-advice note). The loaded
+cost/hr shows under each wage. Burden is in total costs, profit, profit/hour, break-even, Find my price, *Show the math*,
+the job sheet and CSV — never on estimates or invoices (unit and e2e leak checks include burden words and amounts).
+Jobs saved before this feature have no burden until you click *Use my Business profile defaults*.
+
 Owner time is deliberately *not* a cost: the owner's pay is the profit, which is what profit-per-hour measures.
 
 ## Tests
@@ -99,7 +110,7 @@ Owner time is deliberately *not* a cost: the owner's pay is the profit, which is
 ```bash
 npm install          # dev deps: playwright-core, axe-core
 npm test             # 40 unit tests (node:test) — every calculation hand-checked
-npm run test:e2e     # 23-step Chromium run (tests/e2e.js) + 17-step wide-screen/Safari run (tests/e2e-wide.js)
+npm run test:e2e     # tests/e2e.js (Chromium flow) + tests/e2e-wide.js (wide screens + Safari) + tests/e2e-spacing.js
 ```
 
 The e2e tests need a Chromium and a WebKit that match `playwright-core` (`npx playwright-core install chromium webkit`,
@@ -119,6 +130,14 @@ and results sit side by side (results ≥ 430px, inputs ≥ 640px), the top bar 
 scrolling, no visible text is cut off, estimate editor and preview sit side by side, and no view scrolls sideways.
 It also checks WebKit print media (estimate and invoice fit one Letter page; Playwright can only make PDFs in Chromium,
 so WebKit is measured at the 7.5×10in printable area) and runs an iPhone 13 (WebKit, 390×844) pass over every screen.
+
+### Spacing check
+`tests/e2e-spacing.js` runs `tests/spacing.js` in Chromium and WebKit at 1920×1080, 1366×768, 1440×900, 1280×720 and
+390×844 over every view and state (walkthrough steps, calculator, menu, Find my price, loss, toast, saved jobs, profile,
+estimate and invoice editors, estimate/invoice/job-sheet print previews, templates, plans, guide, terms, privacy). Any
+two visible cards, panels, boxes, button groups, tables, toasts or modals that overlap or sit closer than 12px (8px if
+either is a small inline button) fail the test. Spacing uses one scale: `--sp-1..5` = 4, 8, 12, 16, 24px.
+`SP_BROWSERS=webkit SP_SIZES=1440` narrows a run; `SPACING_SHOTS=dir` keeps a screenshot of every state.
 
 ### Desktop layout
 Desktop is the primary target. From 1200px wide: one-row top bar; hero and the two mode cards side by side; inputs left,

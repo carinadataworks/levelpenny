@@ -665,3 +665,5 @@ details.math { margin-top: var(--sp-3); }
 .tpl-stats { gap: var(--sp-3); }
 .downloads h2 { margin-bottom: var(--sp-3); }
 @container paper (max-width: 600px) { .doc-bottom { gap: var(--sp-3); } }
+.lines .line.crew { align-items: start; }
+.lines .line.crew .icon-btn { align-self: end; }
