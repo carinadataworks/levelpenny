@@ -1,5 +1,5 @@
 /*
- * Spacing e2e: runs tests/spacing.js in Chromium and WebKit at 1920×1080, 1366×768, 1440×900, 1280×720
+ * Spacing e2e: runs tests/spacing.js in Chromium and WebKit at 1920×1080, 1600×900, 1366×768, 1280×720, 1440×900, 1512×982, 1728×1117
  * and phone 390×844 across every view and state (walkthrough, calculator, menu, reverse, loss, toast,
  * saved jobs, estimate and invoice editor, print previews, templates, profile, plans, guide, legal).
  * Fails on any violation. Screenshots of every state go to $SPACING_SHOTS (default: OS temp dir).
@@ -10,7 +10,7 @@ const pw = require('playwright-core');
 const { start } = require('./serve.js');
 const { spacing } = require('./spacing.js');
 
-const SIZES = [[1920, 1080], [1366, 768], [1440, 900], [1280, 720], [390, 844]]
+const SIZES = [[1920, 1080], [1600, 900], [1366, 768], [1280, 720], [1440, 900], [1512, 982], [1728, 1117], [390, 844]]
   .filter(([w]) => !process.env.SP_SIZES || process.env.SP_SIZES.split(',').includes(String(w)));
 const BROWSERS = (process.env.SP_BROWSERS || 'chromium,webkit').split(',');
 const OUT = process.env.SPACING_SHOTS || fs.mkdtempSync(path.join(os.tmpdir(), 'jpc-spacing-'));
