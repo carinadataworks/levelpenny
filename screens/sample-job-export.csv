@@ -3,27 +3,28 @@ Job,Fence repair — Smith
 Customer,
 
 Section,Item,Qty / hours,Unit cost / rate,Amount
-Revenue,Price charged,,,3750.00
+Revenue,Price charged,,,3800.00
 Materials,Cedar pickets,120,3.89,466.80
 Materials,Posts & concrete,1,286.40,286.40
 Labor,Helper,14,22.00,308.00
+Labor burden,"Helper — payroll tax, comp, benefits",14,25.44,48.20
 Owner time,Owner hours (not a cost),12,,
 Shipping & travel,Shipping / delivery,,,0.00
 Shipping & travel,Mileage,60,0.70,42.00
 Permits & fees,Fence permit,,,75.00
-Card fees,2.9% + 0.30 x 2,,,109.35
-Overhead,Overhead allocation,,,375.00
+Card fees,2.9% + 0.30 x 2,,,110.80
+Overhead,Overhead allocation,,,380.00
 
 Result,Value
-Total costs,1662.55
-Gross profit,2571.80
-Profit before tax,2087.45
-Tax set-aside (25%),521.86
-Net profit,1565.59
-Net margin %,41.75
-Markup %,125.56
+Total costs,1717.20
+Gross profit,2573.60
+Profit before tax,2082.80
+Tax set-aside (25%),520.70
+Net profit,1562.10
+Net margin %,41.11
+Markup %,121.29
 Total hours,26
-Profit per hour (all hours),60.22
-Profit per owner hour,130.47
-Billed rate per hour,144.23
-Break-even price,1353.39
+Profit per hour (all hours),60.08
+Profit per owner hour,130.18
+Billed rate per hour,146.15
+Break-even price,1408.72

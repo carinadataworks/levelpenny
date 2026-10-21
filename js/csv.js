@@ -25,7 +25,10 @@
     L.push(row(['Revenue', 'Price charged', '', '', d(r.priceCents)]));
     if (job.materialsMode === 'total') L.push(row(['Materials', 'Materials (total)', '', '', d(r.direct.materials)]));
     else r.direct.materialsLines.forEach(function (m) { L.push(row(['Materials', m.name, m.qty, d(m.unitCents), d(m.cents)])); });
-    r.direct.crewLines.forEach(function (c) { L.push(row(['Labor', c.name, c.hours, d(c.wageCents), d(c.cents)])); });
+    r.direct.crewLines.forEach(function (c) {
+      L.push(row(['Labor', c.name + (c.type === 'sub' ? ' (1099)' : ''), c.hours, d(c.wageCents), d(c.burdenCents ? c.wagesCents : c.cents)]));
+      if (c.burdenCents) L.push(row(['Labor burden', c.name + ' — payroll tax, comp, benefits' + (c.perDiemCents ? ', per diem' : ''), c.hours, d(c.loadedHourlyCents), d(c.burdenCents)]));
+    });
     L.push(row(['Owner time', 'Owner hours (not a cost)', r.ownerHours, '', '']));
     L.push(row(['Shipping & travel', 'Shipping / delivery', '', '', d(r.direct.shippingFlat)]));
     L.push(row(['Shipping & travel', 'Mileage', C.num(job.miles), d(C.toCents(job.mileRate)), d(r.direct.mileage)]));

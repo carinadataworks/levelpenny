@@ -75,7 +75,8 @@ const FENCE = {
   materials: [{ name: 'Cedar pickets', qty: '120', unitCost: '3.89' }, { name: 'Posts & concrete', qty: '1', unitCost: '286.40' }],
   crew: [{ name: 'Helper', wage: '22', hours: '14' }], ownerHours: '12', shipping: '', miles: '60', mileRate: '0.70',
   fee: { preset: 'stripe', pct: '2.9', fixed: '0.30', payments: '2' },
-  otherCosts: [{ category: 'permits', name: 'Fence permit', amount: '75' }], overhead: { mode: 'percent', value: '10' }, taxPct: '25', hoursBasis: 'all'
+  otherCosts: [{ category: 'permits', name: 'Fence permit', amount: '75' }], overhead: { mode: 'percent', value: '10' }, taxPct: '25', hoursBasis: 'all',
+  burden: { ...C.DEFAULT_BURDEN } // new jobs start with the Business profile's example labor burden
 };
 
 (async () => {
@@ -112,23 +113,23 @@ const FENCE = {
 
   await step('Example deck repair is prefilled with hand-checked results', async () => {
     eq(await page.inputValue('#price'), '4850', 'example price');
-    eq(await text(page, '#outNet'), '$1,393.78', 'net profit');
-    eq(await text(page, '#outPph'), '$33.19/hr', 'profit per hour');
-    eq(await text(page, '#outMargin'), '28.7%', 'margin');
-    eq(await text(page, '#outMarkup'), '62.1%', 'markup');
-    eq(await text(page, '#outCosts'), '$2,991.63', 'total costs');
-    eq(await text(page, '#outBE'), '$2,723.72', 'break-even');
+    eq(await text(page, '#outNet'), '$1,296.12', 'net profit');
+    eq(await text(page, '#outPph'), '$30.86/hr', 'profit per hour');
+    eq(await text(page, '#outMargin'), '26.7%', 'margin');
+    eq(await text(page, '#outMarkup'), '55.4%', 'markup');
+    eq(await text(page, '#outCosts'), '$3,121.84', 'total costs (incl. $130.21 example labor burden)');
+    eq(await text(page, '#outBE'), '$2,872.70', 'break-even');
     eq(await text(page, '#outRate'), '$115.48/hr', 'billed rate');
-    check((await text(page, '#valueMsg')).includes('You really make $33.19/hr'), 'value message');
+    check((await text(page, '#valueMsg')).includes('You really make $30.86/hr'), 'value message');
     check((await text(page, '#resultsDisclaimer')) === 'Estimates only, based on the numbers you enter. Not financial or tax advice.', 'results disclaimer');
     check(await page.isVisible('#chart .stack'), 'cost chart drawn');
     eq(await page.locator('#chart .legend li').count(), 10, 'legend rows');
     await page.evaluate(() => window.scrollTo(0, 0));
     await shot(page, 'desktop-02-calculator.png');
     await page.click('text=My hours only');
-    eq(await text(page, '#outPph'), '$139.38/hr', 'owner-only profit per hour');
+    eq(await text(page, '#outPph'), '$129.61/hr', 'owner-only profit per hour');
     await page.click('text=All hours');
-    eq(await text(page, '#outPph'), '$33.19/hr', 'back to all hours');
+    eq(await text(page, '#outPph'), '$30.86/hr', 'back to all hours');
   });
 
   await step('Contractor enters a new fence job from scratch', async () => {
@@ -149,29 +150,57 @@ const FENCE = {
     await page.fill('#o-name-0', 'Fence permit'); await page.fill('#o-amt-0', '75');
     await page.selectOption('#ohMode', 'percent'); await page.fill('#ohValue', '10');
     await page.fill('#taxPct', '25');
-    // Hand check: materials 466.80+286.40, labor 308, miles 42, permit 75 → direct 1,178.20
-    // fees 92.80+0.60 = 93.40, overhead 320 → total 1,591.60; pre-tax 1,608.40; tax 402.10; net 1,206.30; 26 h → 46.40/hr
+    // Hand check: materials 466.80+286.40, labor 308 + example burden 15.65% (48.20) = 356.20, miles 42, permit 75 → direct 1,226.40
+    // fees 92.80+0.60 = 93.40, overhead 320 → total 1,639.80; pre-tax 1,560.20; tax 390.05; net 1,170.15; 26 h → 45.01/hr
     eq(await text(page, '#matTotalOut'), '$753.20', 'materials total');
     eq(await text(page, '#feeTotalOut'), '$93.40', 'card fees');
-    eq(await text(page, '#outCosts'), '$1,591.60', 'total costs');
-    eq(await text(page, '#outNet'), '$1,206.30', 'net profit');
-    eq(await text(page, '#outPph'), '$46.40/hr', 'profit per hour');
-    eq(await text(page, '#outMargin'), '37.7%', 'margin');
-    eq(await text(page, '#outBE'), '$1,353.39', 'break-even');
+    eq(await text(page, '#outCosts'), '$1,639.80', 'total costs');
+    eq(await text(page, '#outNet'), '$1,170.15', 'net profit');
+    eq(await text(page, '#outPph'), '$45.01/hr', 'profit per hour');
+    eq(await text(page, '#outMargin'), '36.6%', 'margin');
+    eq(await text(page, '#outBE'), '$1,408.72', 'break-even');
+    eq(await text(page, '#c-load-0'), 'Loaded cost $25.44/hr', 'loaded cost next to the wage (22 × 1.1565)');
     const r = C.calculate(FENCE);
-    eq(r.netProfitCents, 120630, 'engine agrees with UI');
+    eq(r.netProfitCents, 117015, 'engine agrees with UI');
+  });
+
+  await step('Employee cost: labor burden, per diem, 1099 toggle, loaded rate, math and job sheet', async () => {
+    await page.click('#burdenBox summary');
+    eq(await page.inputValue('#bPayroll'), '7.65', 'example FICA default from profile');
+    check((await text(page, '#burdenBox')).includes('not tax advice'), 'labelled as editable example, not tax advice');
+    // $1.50/hr benefits: burden = 48.20 + 21.00 = 69.20 → labor 377.20, loaded 377.20 / 14 = 26.94
+    await page.fill('#bBenHr', '1.50');
+    eq(await text(page, '#c-load-0'), 'Loaded cost $26.94/hr', 'loaded rate with $/hr benefits');
+    await page.fill('#c-pd-0', '40');  // + $40 per diem → 417.20 → 29.80/hr
+    eq(await text(page, '#c-load-0'), 'Loaded cost $29.80/hr', 'loaded rate with per diem');
+    const withB = C.calculate({ ...FENCE, burden: { ...C.DEFAULT_BURDEN, benefitsHourly: '1.50' }, crew: [{ ...FENCE.crew[0], perDiem: '40' }] });
+    eq(await text(page, '#outNet'), C.money(withB.netProfitCents), 'burden in net profit');
+    eq(await text(page, '#outBE'), C.money(withB.breakEvenCents), 'burden in break-even');
+    check((await text(page, '#mathTable')).includes('Labor burden'), 'burden line in show the math');
+    await page.click('#moreBtn'); await page.click('[data-action="print-jobsheet"]');
+    const js = await text(page, '#printRoot');
+    check(js.includes('labor burden $109.20') && js.includes('loaded $29.80/hr'), 'job sheet shows burden and loaded rate');
+    await page.evaluate(() => { document.body.removeAttribute('data-print'); window.__printed = null; });
+    await page.selectOption('#c-type-0', 'sub');   // 1099: no burden, no per diem → original hand-checked numbers
+    eq(await text(page, '#c-load-0'), '1099 — no burden', '1099 label');
+    eq(await text(page, '#outNet'), '$1,206.30', '1099 sub carries no burden');
+    check(await page.isDisabled('#c-pd-0'), 'per diem off for 1099');
+    await page.selectOption('#c-type-0', 'employee');
+    await page.fill('#bBenHr', '0');
+    eq(await text(page, '#outNet'), '$1,170.15', 'back to example burden only');
+    await page.click('#burdenBox summary');
   });
 
   await step('Bad input is flagged inline and treated as zero (no NaN)', async () => {
     await page.fill('#miles', 'abc');
     check(await page.isVisible('#miles-err'), 'error message shown');
     eq(await page.getAttribute('#miles', 'aria-invalid'), 'true', 'aria-invalid');
-    eq(await text(page, '#outNet'), '$1,237.80', 'miles counted as 0 (net rises by 42 × 0.75)');
+    eq(await text(page, '#outNet'), '$1,201.65', 'miles counted as 0 (net rises by 42 × 0.75)');
     const all = await page.evaluate(() => document.body.innerText);
     check(!/NaN|Infinity|undefined/.test(all), 'no NaN/Infinity/undefined anywhere on screen');
     await page.fill('#miles', '60');
     check(await page.isHidden('#miles-err'), 'error clears');
-    eq(await text(page, '#outNet'), '$1,206.30', 'restored');
+    eq(await text(page, '#outNet'), '$1,170.15', 'restored');
   });
 
   await step('Save the job, reload the page, everything is still there', async () => {
@@ -180,11 +209,11 @@ const FENCE = {
     await page.reload();
     check(await page.isHidden('#tour'), 'tour does not reappear after onboarding');
     eq(await page.inputValue('#jobName'), 'Fence repair — Smith', 'job name restored');
-    eq(await text(page, '#outNet'), '$1,206.30', 'results restored');
+    eq(await text(page, '#outNet'), '$1,170.15', 'results restored');
     eq(await text(page, '#saveStatus'), 'Saved', 'still saved');
     await page.click('[data-view-link="jobs"]');
     eq(await page.locator('#jobsTable tbody tr').count(), 1, 'one saved job');
-    check((await text(page, '#jobsTable tbody tr')).includes('$46.40'), 'saved job shows profit/hr');
+    check((await text(page, '#jobsTable tbody tr')).includes('$45.01'), 'saved job shows profit/hr');
     await page.click('[data-view-link="calculator"]');
   });
 
@@ -192,7 +221,7 @@ const FENCE = {
     await page.fill('#price', '900');
     check(await page.isVisible('#lossAlert'), 'loss alert visible');
     const msg = await text(page, '#lossAlert');
-    check(/Losing money/.test(msg) && /break even, charge at least \$1,353\.39/.test(msg), 'explains loss and break-even: ' + msg);
+    check(/Losing money/.test(msg) && /break even, charge at least \$1,408\.72/.test(msg), 'explains loss and break-even: ' + msg);
     check(await page.$eval('#outNet', e => e.classList.contains('neg')), 'net profit in red');
     eq(await page.$eval('#outNet', e => getComputedStyle(e).color), 'rgb(255, 155, 143)', 'red on navy');
     check((await text(page, '#valueMsg')).includes('loses'), 'value message explains loss');
@@ -289,13 +318,13 @@ const FENCE = {
     await shot(page, 'desktop-06-estimate-editor.png');
   });
 
-  const LEAK_WORDS = ['profit', 'margin', 'wage', 'overhead', 'internal', 'set-aside', 'break-even', 'markup', '/hr', 'per hour', 'card fee', 'carina', 'terms of use'];
+  const LEAK_WORDS = ['profit', 'margin', 'wage', 'overhead', 'internal', 'set-aside', 'break-even', 'markup', '/hr', 'per hour', 'card fee', 'carina', 'terms of use', 'burden', 'payroll', 'per diem', 'loaded', '1099', 'workers'];
   function leakCheck(docText, label) {
     const lower = docText.toLowerCase();
     for (const w of LEAK_WORDS) check(!lower.includes(w), `${label} leaks the word "${w}"`);
     const job = { ...FENCE, price: (quoteCents / 100).toFixed(2) };
     const r = C.calculate(job), m = C.money;
-    const internal = [m(r.netProfitCents), m(r.totalCostsCents), m(r.feesCents), m(r.overheadCents), m(r.taxSetAsideCents), m(r.direct.labor), m(r.direct.total), m(r.grossProfitCents), '$22.00', '$3.89', '$308.00', '$466.80', '$753.20', m(r.breakEvenCents)];
+    const internal = [m(r.netProfitCents), m(r.totalCostsCents), m(r.feesCents), m(r.overheadCents), m(r.taxSetAsideCents), m(r.direct.labor), m(r.direct.laborBurden), m(r.direct.total), m(r.grossProfitCents), '$22.00', '$3.89', '$308.00', '$466.80', '$753.20', m(r.breakEvenCents)];
     for (const s of internal) check(!docText.includes(s), `${label} leaks internal amount ${s}`);
     check(!docText.includes('Helper'), `${label} leaks crew name`);
   }
@@ -427,7 +456,7 @@ const FENCE = {
     const gp = await ctx.newPage(); watch(gp, 'guide');
     await gp.goto(BASE + 'guide.html');
     check((await gp.title()).includes('Job Profit Calculator'), 'name from config');
-    check((await gp.textContent('main')).includes('$33.19/hr'), 'worked example');
+    check((await gp.textContent('main')).includes('$30.86/hr'), 'worked example');
     await gp.pdf({ path: path.join(SHOTS, 'field-guide.pdf'), format: 'Letter', printBackground: true, preferCSSPageSize: true });
     eq(pdfPages(path.join(SHOTS, 'field-guide.pdf')), 1, 'guide pages');
     rasterize(path.join(SHOTS, 'field-guide.pdf'), 'print-field-guide.png');
@@ -474,8 +503,8 @@ const FENCE = {
     const overflow = async () => mp.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
     eq(await overflow(), 0, 'calculator horizontal overflow');
     check(await mp.isVisible('#mobileBar'), 'sticky results bar');
-    eq(await text(mp, '#mbNet'), '$1,393.78', 'mobile bar net');
-    eq(await text(mp, '#mbPph'), '$33.19/hr', 'mobile bar per hour');
+    eq(await text(mp, '#mbNet'), '$1,296.12', 'mobile bar net');
+    eq(await text(mp, '#mbPph'), '$30.86/hr', 'mobile bar per hour');
     const small = await mp.evaluate(() => [...document.querySelectorAll('section[data-view="calculator"] button, section[data-view="calculator"] input:not([type=radio]):not([type=checkbox]), section[data-view="calculator"] select, section[data-view="calculator"] .seg label, .tabs a, .topbar button')]
       .filter(e => e.offsetParent !== null).map(e => ({ id: e.id || e.textContent.trim().slice(0, 20), h: e.getBoundingClientRect().height })).filter(x => x.h < 34));
     eq(small.length, 0, 'tap targets under 34px: ' + JSON.stringify(small));
@@ -533,7 +562,7 @@ const FENCE = {
     const c4 = await browser.newContext();
     const p4 = await c4.newPage(); watch(p4, 'file');
     await p4.goto('file://' + path.join(ROOT, 'index.html'));
-    eq(await text(p4, '#outNet'), '$1,393.78', 'calculates from file://');
+    eq(await text(p4, '#outNet'), '$1,296.12', 'calculates from file://');
     await c4.close();
   });
 

@@ -31,9 +31,17 @@
     ['materials', 'crew', 'otherCosts'].forEach(function (k) { if (!Array.isArray(out[k])) out[k] = []; });
     return out;
   }
+  function profileBurden() {
+    var p = S.profile;
+    return { payrollPct: String(p.burdenPayrollPct == null ? '' : p.burdenPayrollPct), unemploymentPct: String(p.burdenUnemploymentPct == null ? '' : p.burdenUnemploymentPct),
+      compPct: String(p.burdenCompPct == null ? '' : p.burdenCompPct), benefitsPct: String(p.burdenBenefitsPct == null ? '' : p.burdenBenefitsPct),
+      benefitsHourly: String(p.burdenBenefitsHourly == null ? '' : p.burdenBenefitsHourly) };
+  }
+  function blankCrew() { return { name: '', type: 'employee', wage: '', hours: '', perDiem: S.profile.burdenPerDiem ? String(S.profile.burdenPerDiem) : '' }; }
   function freshJob() {
     var j = normalizeJob(C.blankJob());
-    j.crew = [{ name: '', wage: '', hours: '' }];
+    j.burden = profileBurden();
+    j.crew = [blankCrew()];
     j.materials = [{ name: '', qty: '1', unitCost: '' }];
     return j;
   }
@@ -101,7 +109,7 @@
 
   var LIST_DEF = {
     materials: { el: '#materialsLines', blank: function () { return { name: '', qty: '1', unitCost: '' }; }, noun: 'material' },
-    crew: { el: '#crewLines', blank: function () { return { name: '', wage: '', hours: '' }; }, noun: 'crew member' },
+    crew: { el: '#crewLines', blank: function () { return blankCrew(); }, noun: 'crew member' },
     otherCosts: { el: '#otherLines', blank: function (cat) { return { category: cat || 'other', name: '', amount: '' }; }, noun: 'cost' }
   };
   function field(id, label, key, val, opts) {
@@ -118,8 +126,14 @@
         '<output class="line-total" aria-label="Line total"></output><button type="button" class="icon-btn" data-remove aria-label="Remove material ' + esc(m.name || (i + 1)) + '">×</button><p class="err row-err" hidden></p></div>';
     }).join('') || '<p class="hint empty-line">No materials yet.</p>';
     $('#crewLines').innerHTML = j.crew.map(function (p, i) {
-      return '<div class="line crew" data-i="' + i + '">' + field('c-name-' + i, 'Role / name', 'name', p.name, { cls: 'f-name', ph: 'e.g. Helper' }) +
-        field('c-wage-' + i, 'Hourly wage', 'wage', p.wage, { num: 1, pre: '$', cls: 'f-cost', ph: '0.00' }) + field('c-hours-' + i, 'Hours', 'hours', p.hours, { num: 1, cls: 'f-qty', ph: '0' }) +
+      var sub = p.type === 'sub';
+      var typeSel = '<div class="field f-type"><label for="c-type-' + i + '">Paid as</label><select id="c-type-' + i + '" data-key="type">' +
+        '<option value="employee"' + (sub ? '' : ' selected') + '>Employee (W-2)</option><option value="sub"' + (sub ? ' selected' : '') + '>1099 / subcontractor</option></select></div>';
+      var wage = field('c-wage-' + i, sub ? 'Hourly rate' : 'Hourly wage', 'wage', p.wage, { num: 1, pre: '$', cls: 'f-cost', ph: '0.00' });
+      wage = wage.replace(/<\/div>$/, '<p class="hint loaded-rate" id="c-load-' + i + '" aria-live="polite"></p></div>');
+      return '<div class="line crew' + (sub ? ' is-sub' : '') + '" data-i="' + i + '">' + field('c-name-' + i, 'Role / name', 'name', p.name, { cls: 'f-name', ph: 'e.g. Helper' }) + typeSel +
+        wage + field('c-hours-' + i, 'Hours', 'hours', p.hours, { num: 1, cls: 'f-qty', ph: '0' }) +
+        field('c-pd-' + i, 'Per diem / travel pay', 'perDiem', sub ? '' : p.perDiem, { num: 1, pre: '$', cls: 'f-pd', ph: '0.00' }).replace('<input ', sub ? '<input disabled title="1099 subcontractors get no burden or per diem" ' : '<input ') +
         '<output class="line-total" aria-label="Line total"></output><button type="button" class="icon-btn" data-remove aria-label="Remove crew member ' + esc(p.name || (i + 1)) + '">×</button><p class="err row-err" hidden></p></div>';
     }).join('') || '<p class="hint empty-line">No paid crew — just you? Leave this empty and enter your hours below.</p>';
     $('#otherLines').innerHTML = j.otherCosts.map(function (o, i) {
@@ -150,6 +164,10 @@
     } else if (el.hasAttribute('data-key')) {
       var row = el.closest('.line'), list = row.parentElement.getAttribute('data-list');
       S.job[list][+row.getAttribute('data-i')][el.getAttribute('data-key')] = el.value;
+      if (list === 'crew' && el.getAttribute('data-key') === 'type') {
+        if (el.value === 'sub') S.job.crew[+row.getAttribute('data-i')].perDiem = '';
+        var fid = el.id; renderLists(); var nf = document.getElementById(fid); if (nf) nf.focus();
+      }
     } else return;
     validateInput(el);
     recalc();
@@ -190,7 +208,10 @@
     var add = function (op, label, c, cls) { rows.push('<tr class="' + (cls || '') + '"><td class="op">' + op + '</td><th scope="row">' + label + '</th><td class="num">' + money(c) + '</td></tr>'); };
     add('', 'Price charged', r.priceCents);
     if (d.materials) add('−', 'Materials', d.materials);
-    if (d.labor) add('−', 'Crew labor', d.labor);
+    if (d.labor) {
+      if (d.laborBurden) { add('−', 'Crew wages', d.laborWages); add('−', 'Labor burden (payroll tax, comp, benefits, per diem)', d.laborBurden); }
+      else add('−', 'Crew labor', d.labor);
+    }
     if (d.travel) add('−', 'Shipping & travel', d.travel);
     if (d.equipment) add('−', 'Equipment / rental', d.equipment);
     if (d.permits) add('−', 'Permits & fees', d.permits);
@@ -254,7 +275,13 @@
     var oth = d.equipment + d.permits + d.subcontractor + d.other;
     $('#otherTotalOut').textContent = oth ? money(oth) : '';
     $$('#materialsLines .line').forEach(function (row, i) { var m = d.materialsLines[i]; row.querySelector('.line-total').textContent = m ? money(m.cents) : ''; });
-    $$('#crewLines .line').forEach(function (row, i) { var c = d.crewLines[i]; row.querySelector('.line-total').textContent = c ? money(c.cents) : ''; });
+    $$('#crewLines .line').forEach(function (row, i) {
+      var c = d.crewLines[i]; row.querySelector('.line-total').textContent = c ? money(c.cents) : '';
+      var lr = row.querySelector('.loaded-rate');
+      if (lr && c) lr.textContent = c.type === 'sub' ? '1099 — no burden' : (c.wageCents ? 'Loaded cost ' + money(c.loadedHourlyCents) + '/hr' : '');
+    });
+    var b = C.burdenSettings(S.job.burden);
+    $('#burdenSummary').textContent = (Math.round(b.pct * 100) / 100) + '% of wages' + (b.hourlyCents ? ' + ' + money(b.hourlyCents) + '/hr' : '') + (d.laborBurden ? ' · ' + money(d.laborBurden) + ' on this job' : '');
     renderChart(r); renderMath(r);
   }
 
@@ -556,7 +583,7 @@
         '<div class="tpl-actions"><button class="btn btn-primary" type="button" data-tpl="' + t.id + '" data-tpl-act="load">Load into calculator</button><button class="btn" type="button" data-tpl="' + t.id + '" data-tpl-act="copy">Save a copy as my template</button></div></article>';
     }).join('');
   }
-  function templateJob(id) { var t = T.filter(function (x) { return x.id === id; })[0]; return t ? normalizeJob(clone(t.job)) : null; }
+  function templateJob(id) { var t = T.filter(function (x) { return x.id === id; })[0]; if (!t) return null; var j = normalizeJob(clone(t.job)); if (!j.burden) j.burden = profileBurden(); return j; }
 
   // ---------- routing ----------
   var VIEWS = ['calculator', 'jobs', 'documents', 'blueprints', 'profile', 'plans'];
@@ -756,6 +783,7 @@
     $$('[data-view-link]').forEach(function (a) { a.addEventListener('click', function (e) { e.preventDefault(); go(a.getAttribute('data-view-link')); }); });
     // tour
     $('#tourBtn').addEventListener('click', function () { tourOpen(false); });
+    $('#burdenReset').addEventListener('click', function () { S.job.burden = profileBurden(); fillJobForm(); recalc(); toast('Labor burden set to your Business profile defaults.'); });
     $('#tourNext').addEventListener('click', function () { if (tourI < TOUR.length - 1) tourShow(tourI + 1); else tourClose(); });
     $('#tourBack').addEventListener('click', function () { if (tourI > 0) tourShow(tourI - 1); });
     $('#tourSkip').addEventListener('click', tourClose);

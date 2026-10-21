@@ -129,7 +129,7 @@ const go = async (p, v) => { await p.click(`[data-view-link="${v}"]`); await p.w
         await p.tap('#agreeTerms'); await p.tap('#tourSkip');
         check(await overflowX(p) <= 0, 'calculator overflow');
         check(await p.isVisible('#mobileBar'), 'sticky results bar');
-        check((await p.textContent('#mbNet')).trim() === '$1,393.78', 'mobile bar net');
+        check((await p.textContent('#mbNet')).trim() === '$1,296.12', 'mobile bar net');
         const c1 = await clipped(p, 'section[data-view="calculator"]'); check(c1.length === 0, 'clipped: ' + c1.join(', '));
         await p.evaluate(() => window.scrollTo(0, 0));
         await p.screenshot({ path: path.join(SHOTS, 'webkit-iphone-calculator.png') });

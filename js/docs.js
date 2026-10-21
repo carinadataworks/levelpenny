@@ -31,7 +31,11 @@
       dueDays: 14, validDays: 30,
       salesTaxPct: '', markupPct: '15',
       estimatePrefix: 'EST-', invoicePrefix: 'INV-',
-      nextEstimate: 1001, nextInvoice: 1001
+      nextEstimate: 1001, nextInvoice: 1001,
+      // Labor burden defaults for new jobs — editable EXAMPLES, not tax advice (see calc.js DEFAULT_BURDEN)
+      burdenPayrollPct: C.DEFAULT_BURDEN.payrollPct, burdenUnemploymentPct: C.DEFAULT_BURDEN.unemploymentPct,
+      burdenCompPct: C.DEFAULT_BURDEN.compPct, burdenBenefitsPct: C.DEFAULT_BURDEN.benefitsPct,
+      burdenBenefitsHourly: C.DEFAULT_BURDEN.benefitsHourly, burdenPerDiem: C.DEFAULT_BURDEN.perDiem
     };
   }
 
@@ -291,7 +295,11 @@
     var row = function (label, cents, cls) { return '<tr' + (cls ? ' class="' + cls + '"' : '') + '><td>' + label + '</td><td class="num">' + fmt(cents) + '</td></tr>'; };
     var mats = job.materialsMode === 'total' ? row('Materials (total)', d.materials) :
       d.materialsLines.map(function (m) { return row(esc(m.name) + ' <span class="muted">' + esc(m.qty) + ' × ' + fmt(m.unitCents) + '</span>', m.cents); }).join('');
-    var crew = d.crewLines.map(function (p) { return row(esc(p.name) + ' <span class="muted">' + C.hours(p.hours) + ' × ' + fmt(p.wageCents) + '/hr</span>', p.cents); }).join('');
+    var crew = d.crewLines.map(function (p) {
+      var detail = C.hours(p.hours) + ' × ' + fmt(p.wageCents) + '/hr' + (p.type === 'sub' ? ' · 1099, no burden' :
+        (p.burdenCents ? ' + burden ' + fmt(p.burdenCents) + ' · loaded ' + fmt(p.loadedHourlyCents) + '/hr' : ''));
+      return row(esc(p.name) + ' <span class="muted">' + detail + '</span>', p.cents);
+    }).join('');
     var others = d.otherLines.map(function (o) { return row(esc(o.name) + ' <span class="muted">' + esc(C.OTHER_CATEGORIES[o.category]) + '</span>', o.cents); }).join('');
     var cust = job.customer || {};
     return '<article class="jobsheet">' +
@@ -308,7 +316,7 @@
       '</div>' +
       '<div class="js-cols"><table class="doc-lines js-table"><thead><tr><th>Cost</th><th class="num">Amount</th></tr></thead><tbody>' +
       '<tr class="grp"><td colspan="2">Materials</td></tr>' + (mats || row('None', 0)) +
-      '<tr class="grp"><td colspan="2">Crew labor</td></tr>' + (crew || row('None', 0)) +
+      '<tr class="grp"><td colspan="2">Crew labor' + (d.laborBurden ? ' <span class="muted">wages ' + fmt(d.laborWages) + ' + labor burden ' + fmt(d.laborBurden) + '</span>' : '') + '</td></tr>' + (crew || row('None', 0)) +
       '<tr class="grp"><td colspan="2">Shipping & travel</td></tr>' + row('Shipping / delivery', d.shippingFlat) + row('Mileage <span class="muted">' + esc(C.num(job.miles)) + ' mi × ' + fmt(C.toCents(job.mileRate)) + '</span>', d.mileage) +
       '<tr class="grp"><td colspan="2">Equipment, permits, subs & other</td></tr>' + (others || row('None', 0)) +
       '<tr class="grp"><td colspan="2">Price-based costs</td></tr>' +

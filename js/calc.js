@@ -6,6 +6,10 @@
  *
  * Definitions (also documented in guide.html):
  *   direct costs   = materials + crew labor + shipping/travel + equipment + permits + subcontractors + other
+ *   crew labor     = per person: wage x hours, plus for employees (not 1099 subcontractors) the labor burden:
+ *                    wage x hours x (payroll tax% + unemployment% + workers' comp% + benefits%)
+ *                    + benefits $/hr x hours + per-diem / travel pay
+ *   loaded cost/hr = that person's labor cost / hours
  *   card fees      = price x fee% + fixed fee x number of payments (0 when price is 0)
  *   overhead       = price x overhead%   OR a flat amount
  *   total costs    = direct costs + card fees + overhead
@@ -73,13 +77,48 @@
     other: 'Other'
   };
 
+  /** Example labor-burden defaults. Editable; they are NOT tax advice — rates vary by state, trade and payroll. */
+  var DEFAULT_BURDEN = { payrollPct: '7.65', unemploymentPct: '3', compPct: '5', benefitsPct: '0', benefitsHourly: '0', perDiem: '' };
+
+  function burdenSettings(b) {
+    b = b || {};
+    return {
+      pct: pct(b.payrollPct) + pct(b.unemploymentPct) + pct(b.compPct) + pct(b.benefitsPct),
+      hourlyCents: toCents(b.benefitsHourly)
+    };
+  }
+
+  /** Cost of one crew line. type 'sub' (1099 subcontractor) carries no burden. */
+  function crewLine(p, burden) {
+    var h = nonNeg(p.hours), wageCents = toCents(p.wage);
+    var sub = p.type === 'sub';
+    var wages = round(wageCents * h);
+    var bs = burdenSettings(burden);
+    var pctPart = 0, hourlyPart = 0, perDiem = 0;
+    if (!sub) {
+      pctPart = round(wages * bs.pct / 100);
+      hourlyPart = round(bs.hourlyCents * h);
+      perDiem = toCents(p.perDiem);
+    }
+    var burdenCents = pctPart + hourlyPart + perDiem;
+    var cents = wages + burdenCents;
+    var loadedRate = sub ? wageCents : round(wageCents * (1 + bs.pct / 100)) + bs.hourlyCents;
+    return {
+      name: p.name || 'Crew member', type: sub ? 'sub' : 'employee', wageCents: wageCents, hours: h,
+      wagesCents: wages, burdenPctCents: pctPart, burdenHourlyCents: hourlyPart, perDiemCents: perDiem,
+      burdenCents: burdenCents, burdenPct: sub ? 0 : bs.pct, cents: cents,
+      // loaded cost per hour: the whole line cost per hour worked (incl. per diem) once hours are known
+      loadedHourlyCents: h > 0 ? Math.round(cents / h) : loadedRate
+    };
+  }
+
   function blankJob() {
     return {
       id: null, name: '', client: '', notes: '',
       customer: { name: '', email: '', phone: '', address: '' }, jobAddress: '',
       price: '',
       materialsMode: 'itemized', materials: [], materialsTotal: '',
-      crew: [], ownerHours: '',
+      crew: [], ownerHours: '', burden: null,
       shipping: '', miles: '', mileRate: '0.70',
       fee: { preset: 'stripe', pct: '2.9', fixed: '0.30', payments: '1' },
       otherCosts: [],
@@ -104,12 +143,11 @@
       });
     }
     var crewLines = [];
-    var labor = 0, crewHours = 0;
+    var labor = 0, crewHours = 0, laborWages = 0, laborBurden = 0;
     (job.crew || []).forEach(function (p) {
-      var h = nonNeg(p.hours);
-      var c = round(toCents(p.wage) * h);
-      crewLines.push({ name: p.name || 'Crew member', wageCents: toCents(p.wage), hours: h, cents: c });
-      labor += c; crewHours += h;
+      var cl = crewLine(p, job.burden);
+      crewLines.push(cl);
+      labor += cl.cents; crewHours += cl.hours; laborWages += cl.wagesCents; laborBurden += cl.burdenCents;
     });
     var shippingFlat = toCents(job.shipping);
     var mileage = round(nonNeg(job.miles) * toCents(job.mileRate));
@@ -125,7 +163,7 @@
     var total = materials + labor + travel + other.equipment + other.permits + other.subcontractor + other.other;
     return {
       materials: materials, materialsLines: materialsLines,
-      labor: labor, crewLines: crewLines, crewHours: crewHours,
+      labor: labor, laborWages: laborWages, laborBurden: laborBurden, crewLines: crewLines, crewHours: crewHours,
       shippingFlat: shippingFlat, mileage: mileage, travel: travel,
       equipment: other.equipment, permits: other.permits, subcontractor: other.subcontractor, other: other.other,
       otherLines: otherLines,
@@ -295,7 +333,8 @@
 
   return {
     num: num, isValidInput: isValidInput, toCents: toCents, pct: pct,
-    PRESETS: PRESETS, OTHER_CATEGORIES: OTHER_CATEGORIES,
+    PRESETS: PRESETS, OTHER_CATEGORIES: OTHER_CATEGORIES, DEFAULT_BURDEN: DEFAULT_BURDEN,
+    burdenSettings: burdenSettings, crewLine: crewLine,
     blankJob: blankJob, directCosts: directCosts, calculate: calculate,
     breakEven: breakEven, priceForTarget: priceForTarget, feeFor: feeFor,
     money: money, percent: percent, hours: hours

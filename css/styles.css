@@ -603,3 +603,36 @@ select {
 }
 input[type="date"] { -webkit-appearance: none; appearance: none; display: block; }
 input[type="date"]::-webkit-date-and-time-value { text-align: left; }
+
+/* ---------- Crew lines: name + paid-as on row 1; wage, hours, per diem, total on row 2 ---------- */
+.lines .line.crew { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1fr) minmax(96px, auto) 44px; align-items: end; }
+.lines .line.crew .f-name { grid-column: 1 / 3; grid-row: 1; }
+.lines .line.crew .f-type { grid-column: 3 / 5; grid-row: 1; }
+.lines .line.crew .icon-btn { grid-column: 5; grid-row: 1; }
+.lines .line.crew .f-cost { grid-column: 1; grid-row: 2; }
+.lines .line.crew .f-qty { grid-column: 2; grid-row: 2; }
+.lines .line.crew .f-pd { grid-column: 3; grid-row: 2; }
+.lines .line.crew .line-total { grid-column: 4 / 6; grid-row: 2; text-align: right; align-self: start; padding: 30px 2px 0; }
+.lines .line.crew .row-err { grid-column: 1 / -1; }
+.lines .line.crew label { position: static !important; width: auto !important; height: auto !important; overflow: visible !important; clip: auto !important; }
+.lines .line.crew .loaded-rate { margin: 4px 0 0; font-size: .78rem; font-weight: 600; color: var(--navy-700); white-space: nowrap; }
+.lines .line.crew.is-sub .loaded-rate { color: var(--ink-3); font-weight: 500; }
+.lines .line.crew input:disabled { background: var(--navy-50); }
+@container lines (max-width: 559px) {
+  .lines .line.crew { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) 44px; }
+  .lines .line.crew .f-name { grid-column: 1 / 3; grid-row: 1; }
+  .lines .line.crew .icon-btn { grid-column: 3; grid-row: 1; }
+  .lines .line.crew .f-type { grid-column: 1 / -1; grid-row: 2; }
+  .lines .line.crew .f-cost { grid-column: 1; grid-row: 3; }
+  .lines .line.crew .f-qty { grid-column: 2 / 4; grid-row: 3; }
+  .lines .line.crew .f-pd { grid-column: 1; grid-row: 4; }
+  .lines .line.crew .line-total { grid-column: 2 / 4; grid-row: 4; padding: 30px 2px 0; }
+}
+details.burden { margin: 12px 0; border: 1px solid var(--line); border-radius: var(--radius-sm); background: var(--navy-50); padding: 0 14px; }
+details.burden > summary { cursor: pointer; min-height: 44px; display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; font-weight: 700; color: var(--navy-900); }
+details.burden > summary .burden-sum { font-weight: 500; font-size: .85rem; color: var(--ink-2); }
+details.burden[open] { padding-bottom: 6px; }
+details.burden .burden-note { margin-top: 0; }
+.burden-grid .field label .opt, .profile-form .field label .opt { white-space: nowrap; }
+.burden-foot { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 12px; margin: 4px 0 8px; }
+.burden-foot .hint { margin: 0; }

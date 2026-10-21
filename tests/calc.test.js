@@ -306,7 +306,8 @@ test('convertToInvoice(): new invoice number, same lines, estimate marked accept
 });
 
 // ---------------- privacy: customer documents never leak internal numbers ----------------
-const FORBIDDEN_WORDS = ['profit', 'margin', 'wage', 'overhead', 'internal', 'set-aside', 'break-even', 'markup', 'per hour', '/hr', 'card fee', 'tax set'];
+const FORBIDDEN_WORDS = ['profit', 'margin', 'wage', 'overhead', 'internal', 'set-aside', 'break-even', 'markup', 'per hour', '/hr', 'card fee', 'tax set',
+  'burden', 'payroll', 'fica', 'workers', 'per diem', 'loaded', '1099', 'benefit', 'unemployment'];
 function internalMoneyStrings(job) {
   const r = C.calculate(job), d = r.direct, m = C.money;
   const out = new Set([m(r.netProfitCents), m(r.totalCostsCents), m(r.grossProfitCents), m(r.profitBeforeTaxCents), m(r.taxSetAsideCents), m(r.feesCents), m(r.overheadCents), m(d.total), m(d.labor), m(d.materials)]);
@@ -322,7 +323,8 @@ test('LEAK CHECK — estimates & invoices for every template, every pricing mode
   for (const t of T) {
     for (const type of ['estimate', 'invoice']) {
       for (const opts of [{ markupPct: 15, pricing: 'match', detail: 'itemized' }, { markupPct: 25, pricing: 'markup', detail: 'itemized' }, { markupPct: 15, pricing: 'match', detail: 'summary' }]) {
-        const { doc } = D.newDoc(type, { ...t.job, id: 'j1' }, profile(), opts);
+        const job = { ...t.job, id: 'j1', burden: { ...C.DEFAULT_BURDEN, benefitsHourly: '1.25' }, crew: t.job.crew.map((c, i) => ({ ...c, perDiem: '35', type: i === 1 ? 'sub' : 'employee' })) };
+        const { doc } = D.newDoc(type, job, profile(), opts);
         const html = D.renderCustomerDoc(doc, profile(), CFG);
         const text = html.replace(/<svg[\s\S]*?<\/svg>/g, '').replace(/<[^>]+>/g, ' ').toLowerCase();
         for (const w of FORBIDDEN_WORDS) assert.ok(!text.includes(w), `${t.id}/${type}/${opts.pricing}: customer doc mentions "${w}"`);
@@ -331,7 +333,7 @@ test('LEAK CHECK — estimates & invoices for every template, every pricing mode
         // Totals the customer is meant to see are exempt (e.g. in match mode the job price IS the subtotal).
         const tot = D.docTotals(doc);
         const allowed = new Set([...tot.amounts, tot.subtotal, tot.total, tot.balance, ...doc.lines.map(l => C.toCents(l.unitPrice))].map(c => C.money(c)));
-        for (const s of internalMoneyStrings(t.job)) if (!allowed.has(s)) assert.ok(!html.includes(s), `${t.id}/${type}/${opts.pricing}: internal amount ${s} leaked`);
+        for (const s of [...internalMoneyStrings(t.job), ...internalMoneyStrings(job)]) if (!allowed.has(s)) assert.ok(!html.includes(s), `${t.id}/${type}/${opts.pricing}: internal amount ${s} leaked`);
         // The stored document carries no internal fields at all.
         const json = JSON.stringify(doc);
         for (const k of ['wage', 'cents', 'cost', 'profit', 'margin', 'overhead', 'hours', 'crew', 'taxPct', 'ownerHours', 'materials', 'fee']) assert.ok(!new RegExp(`"${k}":`, 'i').test(json), `doc JSON has key ${k}`);
@@ -463,4 +465,70 @@ test('CSV: blank worksheet is named from config and lists every field', () => {
 test('Config: one place for the product name', () => {
   assert.equal(CFG.name, 'Job Profit Calculator');
   assert.equal(CFG.company, 'Carina Dataworks');
+});
+
+// ---------------- Labor burden (employee cost) ----------------
+test('Labor burden: one employee, every part hand-checked', () => {
+  // $22/hr × 14 h = $308.00 wages; burden 7.65 + 3 + 5 = 15.65% → 308 × 0.1565 = 48.202 → $48.20;
+  // benefits $1.50/hr × 14 = $21.00; per diem $40 → burden $109.20; line $417.20; loaded 417.20 / 14 = $29.80/hr
+  const b = { payrollPct: '7.65', unemploymentPct: '3', compPct: '5', benefitsPct: '0', benefitsHourly: '1.50' };
+  const l = C.crewLine({ name: 'Helper', wage: '22', hours: '14', perDiem: '40' }, b);
+  assert.equal(l.wagesCents, 30800);
+  assert.equal(l.burdenPctCents, 4820);
+  assert.equal(l.burdenHourlyCents, 2100);
+  assert.equal(l.perDiemCents, 4000);
+  assert.equal(l.burdenCents, 10920);
+  assert.equal(l.cents, 41720);
+  assert.equal(l.loadedHourlyCents, 2980);
+  // with no hours yet, the loaded rate is the rate itself: 22 × 1.1565 = 25.443 → 25.44 + 1.50 = $26.94
+  assert.equal(C.crewLine({ wage: '22', hours: '' }, b).loadedHourlyCents, 2694);
+});
+test('Labor burden: 1099 subcontractors get none (no %, no $/hr, no per diem)', () => {
+  const l = C.crewLine({ wage: '45', hours: '10', type: 'sub', perDiem: '40' }, { ...C.DEFAULT_BURDEN, benefitsHourly: '2' });
+  assert.equal(l.type, 'sub');
+  assert.equal(l.burdenCents, 0);
+  assert.equal(l.cents, 45000);
+  assert.equal(l.loadedHourlyCents, 4500);
+  // no burden settings at all (older saved jobs) = no burden
+  assert.equal(C.calculate({ crew: [{ wage: '20', hours: '10' }] }).direct.labor, 20000);
+  // junk and negative burden inputs count as 0; each % is capped at 100
+  assert.equal(C.crewLine({ wage: '10', hours: '1' }, { payrollPct: 'abc', compPct: '-5', unemploymentPct: '250' }).cents, 2000);
+});
+test('Labor burden flows into total costs, profit, profit/hour and break-even (deck job, default example rates)', () => {
+  const j = { ...deck(), burden: { ...C.DEFAULT_BURDEN } };
+  const r = C.calculate(j);
+  // wages 16×32 + 16×20 = 832.00; burden 15.65%: 512 × .1565 = 80.128 → 80.13, 320 × .1565 = 50.08 → $130.21
+  assert.equal(r.direct.laborWages, 83200);
+  assert.equal(r.direct.laborBurden, 13021);
+  assert.equal(r.direct.labor, 96221);
+  assert.equal(r.totalCostsCents, 312184);         // 2991.63 + 130.21
+  assert.equal(r.profitBeforeTaxCents, 172816);    // 4850 − 3121.84
+  assert.equal(r.taxSetAsideCents, 43204);         // 25% of 1728.16
+  assert.equal(r.netProfitCents, 129612);          // 1728.16 − 432.04
+  assert.equal(r.profitPerHourCents, 3086);        // 1296.12 / 42 = 30.86
+  assert.deepEqual(r.direct.crewLines.map(c => c.loadedHourlyCents), [3701, 2313]); // 592.13/16, 370.08/16
+  // break-even: fixed costs 2510.44 + 0.30 = 2510.74, kept share 1 − 2.6% − 10% = 0.874 → 2872.70
+  assert.equal(r.breakEvenCents, 287270);
+  const p = C.calculate(j, { priceCents: r.breakEvenCents });
+  assert.ok(p.profitBeforeTaxCents >= 0 && C.calculate(j, { priceCents: r.breakEvenCents - 1 }).profitBeforeTaxCents < 0);
+});
+test('Labor burden raises the Find my price quote, and a sub on the same hours lowers it back', () => {
+  const plain = C.priceForTarget(deck(), { type: 'margin', value: 30, roundTo: 25 });
+  const loaded = C.priceForTarget({ ...deck(), burden: { ...C.DEFAULT_BURDEN } }, { type: 'margin', value: 30, roundTo: 25 });
+  assert.equal(plain.priceCents, 502500);
+  assert.equal(loaded.priceCents, 530000);
+  assert.ok(loaded.result.netMargin >= 0.3);
+  const subs = { ...deck(), burden: { ...C.DEFAULT_BURDEN }, crew: deck().crew.map(c => ({ ...c, type: 'sub' })) };
+  assert.equal(C.priceForTarget(subs, { type: 'margin', value: 30, roundTo: 25 }).priceCents, plain.priceCents);
+});
+test('Labor burden shows on the internal job sheet and CSV, never on customer documents', () => {
+  const j = { ...deck(), burden: { ...C.DEFAULT_BURDEN } }, r = C.calculate(j);
+  const sheet = D.renderJobSheet(j, r, profile(), CFG);
+  assert.ok(sheet.includes('labor burden $130.21'));
+  assert.ok(sheet.includes('loaded $37.01/hr'));
+  const csv = CSV.jobToCsv(j, r, CFG.name);
+  assert.match(csv, /Labor burden,"Lead carpenter — payroll tax, comp, benefits",16,37.01,80.13/);
+  const { doc } = D.newDoc('estimate', { ...j, id: 'j1' }, profile(), { pricing: 'match', detail: 'itemized', markupPct: 15 });
+  const html = D.renderCustomerDoc(doc, profile(), CFG).toLowerCase();
+  for (const w of ['burden', '130.21', '37.01', 'loaded', 'payroll']) assert.ok(!html.includes(w), 'customer doc leaks ' + w);
 });
