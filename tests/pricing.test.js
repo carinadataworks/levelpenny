@@ -16,7 +16,7 @@ const ROOT = path.resolve(__dirname, '..');
 const read = f => fs.readFileSync(path.join(ROOT, f), 'utf8');
 const PAGES = ['index.html', 'terms.html', 'privacy.html', 'guide.html', 'README.md', 'js/app.js', 'js/plans.js', 'js/page.js', 'js/config.js'];
 
-test('approved price set (Kyle, Oct 21 2026): Free $0, Pro $9/mo or $79/yr, Business $19/mo or $169/yr', () => {
+test('approved price set (Carina Dataworks, Oct 21 2026): Free $0, Pro $9/mo or $79/yr, Business $19/mo or $169/yr', () => {
   assert.deepStrictEqual(P.PLANS.map(p => [p.id, p.name, p.monthlyCents, p.yearlyCents]), [
     ['free', 'Free', 0, 0], ['pro', 'Pro', 900, 7900], ['business', 'Business', 1900, 16900]
   ]);

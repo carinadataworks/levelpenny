@@ -1,5 +1,5 @@
 /*
- * Wide-screen + Safari test: every desktop size Kyle targets (16:9 and MacBook 16:10) in
+ * Wide-screen + Safari test: every desktop size Carina Dataworks targets (16:9 and MacBook 16:10) in
  * Chromium AND WebKit (Safari's engine), WebKit print layout, and iPhone in WebKit.
  * Run: npm run test:e2e   (runs tests/e2e.js, then this file)
  */

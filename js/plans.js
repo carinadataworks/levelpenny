@@ -22,7 +22,7 @@
   var STATUS = 'Planned pricing, not billed yet. No payment details are collected anywhere in this app.';
   var TESTING_NOTE = 'While pricing is being tested, everything that is built works on Free except the saved-jobs limit.';
 
-  // Prices in whole cents. Approved by Kyle, Oct 21 2026.
+  // Prices in whole cents. Approved by Carina Dataworks, Oct 21 2026.
   var PLANS = [
     {
       id: 'free', name: 'Free', monthlyCents: 0, yearlyCents: 0,
